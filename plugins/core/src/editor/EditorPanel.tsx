@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { FilePlus2, Zap } from "lucide-react";
+import { FilePlus2, Plus, X, Zap } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
-import { Button, Kbd, cn } from "@cp-ide/ui";
+import { Button, Kbd, Tooltip, cn } from "@cp-ide/ui";
 import { defineThemes, monaco } from "./monaco.ts";
 import { parseDiagnostics } from "./diagnostics.ts";
 
@@ -61,6 +61,107 @@ export function installDiagnostics(ctx: WebPluginContext) {
   });
 }
 
+const FILE_NAME = /^[\w.-]+\.(cpp|cc|cxx|h|hpp|py|txt|in|out|ans|md)$/i;
+
+export async function newFile(ctx: WebPluginContext, suggestion = "brute.cpp") {
+  const { problem, buffers } = ctx.workspace.get();
+  if (!problem) return;
+  const name = await ctx.ui.prompt({
+    title: "New file",
+    placeholder: "brute.cpp, gen.py, 1.in …",
+    value: suggestion,
+    validate: (v) => (!FILE_NAME.test(v) ? "Use a name like brute.cpp, gen.py or 1.in" : buffers[v] ? "File already exists" : undefined),
+  });
+  if (name) await ctx.workspace.createFile(name).catch((e) => ctx.notify.error("Could not create file", String(e?.message ?? e)));
+}
+
+export async function renameFile(ctx: WebPluginContext, file?: string) {
+  const { problem, buffers, activeFile } = ctx.workspace.get();
+  const from = file ?? activeFile;
+  if (!problem || !from) return;
+  const to = await ctx.ui.prompt({
+    title: `Rename ${from}`,
+    value: from,
+    validate: (v) => (!FILE_NAME.test(v) ? "Invalid file name" : v !== from && buffers[v] ? "File already exists" : undefined),
+  });
+  if (to && to !== from) await ctx.workspace.renameFile(from, to).catch((e) => ctx.notify.error("Could not rename file", String(e?.message ?? e)));
+}
+
+export async function deleteFile(ctx: WebPluginContext, file?: string) {
+  const { problem, activeFile } = ctx.workspace.get();
+  const name = file ?? activeFile;
+  if (!problem || !name) return;
+  if (name === problem.meta.mainFile) return ctx.notify.error("The main file can't be deleted");
+  const ok = await ctx.ui.confirm({ title: `Delete ${name}?`, message: "The file is removed from the problem folder.", confirmLabel: "Delete", destructive: true });
+  if (ok) await ctx.workspace.deleteFile(name).catch((e) => ctx.notify.error("Could not delete file", String(e?.message ?? e)));
+}
+
+/** Attach monaco-vim while `enabled`; the status line (mode, pending keys) renders into `statusRef`. */
+function useVim(editor: CodeEditor | null, enabled: boolean, statusRef: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    if (!editor || !enabled || !statusRef.current) return;
+    let disposed = false;
+    let vim: { dispose(): void } | null = null;
+    void import("monaco-vim").then(({ initVimMode }) => {
+      if (!disposed) vim = initVimMode(editor, statusRef.current);
+    });
+    return () => {
+      disposed = true;
+      vim?.dispose();
+      if (statusRef.current) statusRef.current.textContent = "";
+    };
+  }, [editor, enabled, statusRef]);
+}
+
+function FileTabs({ ctx, files, activeFile }: { ctx: WebPluginContext; files: string[]; activeFile: string }) {
+  const buffers = ctx.workspace.use((s) => s.buffers);
+  const mainFile = ctx.workspace.use((s) => s.problem?.meta.mainFile);
+  return (
+    <div className="flex shrink-0 items-end gap-px overflow-x-auto border-b px-1 pt-1">
+      {files.map((f) => {
+        const b = buffers[f];
+        const dirty = b && b.content !== b.saved;
+        return (
+          <div
+            key={f}
+            onClick={() => ctx.workspace.setActiveFile(f)}
+            onDoubleClick={() => renameFile(ctx, f)}
+            onAuxClick={(e) => e.button === 1 && f !== mainFile && deleteFile(ctx, f)}
+            title={f === mainFile ? `${f} (main file) — double-click to rename` : `${f} — double-click to rename`}
+            className={cn(
+              "group flex cursor-pointer items-center gap-1.5 rounded-t py-1 pr-1.5 pl-2.5 font-mono text-[0.6875rem] whitespace-nowrap select-none",
+              f === activeFile ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {f}
+            {f === mainFile && <span className="text-[0.5625rem] text-primary">main</span>}
+            {f !== mainFile ? (
+              <button
+                aria-label={`Delete ${f}`}
+                className="flex size-3.5 items-center justify-center rounded-sm opacity-0 group-hover:opacity-70 hover:bg-accent hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void deleteFile(ctx, f);
+                }}
+              >
+                {dirty ? <span className="size-1.5 rounded-full bg-primary group-hover:hidden" /> : null}
+                <X className={cn("size-3", dirty && "hidden group-hover:block")} />
+              </button>
+            ) : (
+              <span className="flex size-3.5 items-center justify-center">{dirty && <span className="size-1.5 rounded-full bg-primary" />}</span>
+            )}
+          </div>
+        );
+      })}
+      <Tooltip content="New file (brute force, generator, extra input…)">
+        <button className="mb-0.5 ml-1 flex size-5 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => newFile(ctx)}>
+          <Plus className="size-3.5" />
+        </button>
+      </Tooltip>
+    </div>
+  );
+}
+
 function EmptyState({ ctx }: PanelProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-xs text-muted-foreground">
@@ -90,7 +191,11 @@ export function EditorPanel({ ctx }: PanelProps) {
   const wordWrap = ctx.settings.use("editor.wordWrap");
   const minimap = ctx.settings.use("editor.minimap");
   const lineNumbers = ctx.settings.use("editor.lineNumbers");
+  const vimMode = ctx.settings.use("editor.vimMode");
   const editorRef = useRef<CodeEditor | null>(null);
+  const [editor, setEditor] = useState<CodeEditor | null>(null);
+  const vimStatusRef = useRef<HTMLDivElement>(null);
+  useVim(editor, vimMode, vimStatusRef);
 
   useEffect(() => {
     monaco.editor.setTheme(defineThemes());
@@ -109,26 +214,7 @@ export function EditorPanel({ ctx }: PanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      {files.length > 1 && (
-        <div className="flex shrink-0 gap-px border-b px-1 pt-1">
-          {files.map((f) => {
-            const dirty = buffers[f]!.content !== buffers[f]!.saved;
-            return (
-              <button
-                key={f}
-                onClick={() => ctx.workspace.setActiveFile(f)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-t px-2.5 py-1 font-mono text-[0.6875rem]",
-                  f === activeFile ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {f}
-                {dirty && <span className="size-1.5 rounded-full bg-primary" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <FileTabs ctx={ctx} files={files} activeFile={activeFile} />
       <div className="min-h-0 flex-1">
         <Editor
           path={`${problem.id}/${activeFile}`}
@@ -139,6 +225,7 @@ export function EditorPanel({ ctx }: PanelProps) {
           onMount={(editor) => {
             editorRef.current = editor;
             current = editor;
+            setEditor(editor);
             editor.onDidFocusEditorText(() => (current = editor));
             editor.focus();
           }}
@@ -164,6 +251,7 @@ export function EditorPanel({ ctx }: PanelProps) {
           }}
         />
       </div>
+      {vimMode && <div ref={vimStatusRef} className="h-5 shrink-0 border-t px-2 font-mono text-[0.6875rem] leading-5 text-muted-foreground [&_input]:bg-transparent [&_input]:outline-none" />}
     </div>
   );
 }

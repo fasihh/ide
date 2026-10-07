@@ -1,8 +1,67 @@
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Eye, EyeOff, Loader2, Play, Plus, Trash2 } from "lucide-react";
+import { create } from "zustand";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Copy,
+  CopyPlus,
+  Eye,
+  EyeOff,
+  FileInput,
+  Loader2,
+  MoreHorizontal,
+  Play,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import type { PanelProps, TestRunState, WebPluginContext } from "@cp-ide/plugin-api/web";
 import type { ExecResult, TestCase } from "@cp-ide/shared";
-import { Badge, Button, Kbd, Textarea, Tooltip, cn } from "@cp-ide/ui";
+import {
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Kbd,
+  Textarea,
+  Tooltip,
+  cn,
+} from "@cp-ide/ui";
+
+/** Collapsed test cards, shared so "collapse all" can drive every card. */
+const useCollapsed = create<{ ids: Set<string> }>(() => ({ ids: new Set() }));
+const toggleCollapsed = (id: string) =>
+  useCollapsed.setState((s) => {
+    const ids = new Set(s.ids);
+    if (ids.has(id)) ids.delete(id);
+    else ids.add(id);
+    return { ids };
+  });
+
+/** Pair `name.in` with `name.out` / `name.ans` files in the problem folder and add them as tests. */
+export function importTestFiles(ctx: WebPluginContext) {
+  const { buffers, problem } = ctx.workspace.get();
+  if (!problem) return;
+  const existing = new Set(problem.tests.map((t) => t.input.trim()));
+  let added = 0;
+  for (const name of Object.keys(buffers).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) {
+    const m = /^(.*)\.in$/i.exec(name);
+    if (!m) continue;
+    const input = buffers[name]!.content;
+    if (existing.has(input.trim())) continue;
+    const out = buffers[`${m[1]}.out`] ?? buffers[`${m[1]}.ans`];
+    ctx.workspace.addTest({ input, expected: out?.content ?? "" });
+    existing.add(input.trim());
+    added++;
+  }
+  if (added) ctx.notify.success(`Imported ${added} test${added === 1 ? "" : "s"}`);
+  else ctx.notify.info("No new .in files to import", "Add files like 1.in / 1.out to the problem (+ in the editor tabs).");
+}
 
 const VERDICT_LABEL: Record<ExecResult["verdict"], string> = {
   AC: "Accepted",
@@ -73,14 +132,15 @@ function OutputView({ result, expected }: { result: ExecResult; expected: string
 }
 
 function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: TestCase; index: number; state: TestRunState | undefined }) {
-  const [open, setOpen] = useState(true);
+  const open = !useCollapsed((s) => s.ids.has(test.id));
+  const count = ctx.workspace.use((s) => s.problem?.tests.length ?? 0);
   const result = state?.status === "done" ? state.result : null;
   const busy = state?.status === "running" || state?.status === "queued";
 
   return (
     <div className={cn("rounded-md border", !test.enabled && "opacity-55")}>
       <div className="group flex h-8 items-center gap-1.5 pr-1 pl-1.5">
-        <button className="flex flex-1 cursor-pointer items-center gap-1.5 text-left" onClick={() => setOpen(!open)}>
+        <button className="flex flex-1 cursor-pointer items-center gap-1.5 text-left" onClick={() => toggleCollapsed(test.id)}>
           {open ? <ChevronDown className="size-3.5 text-muted-foreground" /> : <ChevronRight className="size-3.5 text-muted-foreground" />}
           <span className="text-xs font-medium">Test {index + 1}</span>
           {test.isSample && <span className="text-[0.625rem] text-muted-foreground">sample</span>}
@@ -98,11 +158,28 @@ function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: Te
               {test.enabled ? <Eye /> : <EyeOff />}
             </Button>
           </Tooltip>
-          <Tooltip content="Delete test">
-            <Button variant="ghost" size="icon-sm" onClick={() => ctx.workspace.removeTest(test.id)}>
-              <Trash2 />
-            </Button>
-          </Tooltip>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => ctx.workspace.duplicateTest(test.id)}>
+                <CopyPlus /> Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={index === 0} onSelect={() => ctx.workspace.moveTest(test.id, -1)}>
+                <ArrowUp /> Move up
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={index === count - 1} onSelect={() => ctx.workspace.moveTest(test.id, 1)}>
+                <ArrowDown /> Move down
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => ctx.workspace.removeTest(test.id)}>
+                <Trash2 /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       {open && (
@@ -158,6 +235,7 @@ export function TestsPanel({ ctx }: PanelProps) {
   const problem = ctx.workspace.use((s) => s.problem);
   const states = ctx.runner.use((s) => s.tests);
   const phase = ctx.runner.use((s) => s.phase);
+  const anyOpen = useCollapsed((s) => !!problem && problem.tests.some((t) => !s.ids.has(t.id)));
 
   if (!problem) return <div className="p-4 text-xs text-muted-foreground">Open a problem to manage its tests.</div>;
 
@@ -168,9 +246,9 @@ export function TestsPanel({ ctx }: PanelProps) {
   });
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2">
-        <span className="text-xs text-muted-foreground">
+    <div className="@container flex h-full flex-col">
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b px-2">
+        <span className="truncate text-xs whitespace-nowrap text-muted-foreground">
           {problem.tests.length} test{problem.tests.length === 1 ? "" : "s"}
           {ran.length > 0 && (
             <span className={cn("ml-2 font-medium", passed.length === ran.length ? "text-verdict-ac" : "text-verdict-wa")}>
@@ -179,12 +257,26 @@ export function TestsPanel({ ctx }: PanelProps) {
           )}
         </span>
         <div className="flex-1" />
+        <Tooltip content={anyOpen ? "Collapse all" : "Expand all"}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => useCollapsed.setState({ ids: anyOpen ? new Set(problem.tests.map((t) => t.id)) : new Set() })}
+          >
+            {anyOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
+          </Button>
+        </Tooltip>
+        <Tooltip content="Import .in / .out files from the problem folder">
+          <Button variant="ghost" size="icon-sm" onClick={() => importTestFiles(ctx)}>
+            <FileInput />
+          </Button>
+        </Tooltip>
         <Button variant="ghost" size="sm" onClick={() => ctx.workspace.addTest()}>
-          <Plus /> Add
+          <Plus /> <span className="hidden @[20rem]:inline">Add</span>
         </Button>
         <Button size="sm" disabled={phase !== "idle" || problem.tests.length === 0} onClick={() => ctx.runner.run()}>
           {phase === "idle" ? <Play /> : <Loader2 className="animate-spin" />}
-          Run all <Kbd className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80">Ctrl+↵</Kbd>
+          Run all <Kbd className="hidden border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80 @[26rem]:inline-flex">Ctrl+↵</Kbd>
         </Button>
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">

@@ -29,15 +29,20 @@ Data locations:
 
 ## Shortcuts
 
+All of these can be changed in **Keyboard Shortcuts** (Ctrl+Alt+K).
+
 | Keys | Action |
 |---|---|
-| Ctrl+Enter | Run all tests |
-| Ctrl+S | Save |
-| Alt+N / Alt+Shift+N | New scratch problem / New problem |
+| Ctrl+Shift+P / Ctrl+P | Command palette / go to problem |
+| Ctrl+Enter / Ctrl+Shift+Enter | Run all tests / run with custom input |
+| Ctrl+S · Shift+Alt+F | Save · format document |
+| Alt+N / Alt+Shift+N | New scratch problem / new problem |
+| F2 | Rename the current file |
 | Alt+T | Add test |
 | Ctrl+B / Ctrl+J | Toggle problems / output panel |
-| Alt+1 / Alt+2 / Alt+3 | Code / Tests / Problem panel |
-| Ctrl+, | Settings |
+| Alt+1…4 | Code / Tests / Problem / Custom Input panel |
+| Ctrl+Alt+1…4 | Default / Focus / Zen / Everything layout |
+| Ctrl+, · Ctrl+Alt+K | Settings · keyboard shortcuts |
 
 ## Scripts
 

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, RefreshCw, Wrench, XCircle } from "lucide-react";
-import { type PluginRoutes, type RpcClient, definePlugin } from "@cp-ide/plugin-api/web";
+import { type PluginRoutes, type RpcClient, definePlugin, unwrap } from "@cp-ide/plugin-api/web";
 import { defineSettings } from "@cp-ide/shared";
 import { Button } from "@cp-ide/ui";
 import type serverPlugin from "./server.ts";
 
 type Api = RpcClient<PluginRoutes<typeof serverPlugin>>;
-type Info = Awaited<ReturnType<Awaited<ReturnType<Api["info"]["$get"]>>["json"]>>;
+type Info = Awaited<ReturnType<typeof fetchInfo>>;
 
 const settings = defineSettings({
   "toolchain.checkOnStartup": {
@@ -18,10 +18,8 @@ const settings = defineSettings({
   },
 });
 
-async function fetchInfo(api: Api): Promise<Info> {
-  const res = await api.info.$get();
-  if (!res.ok) throw new Error(`toolchain check failed (${res.status})`);
-  return res.json();
+function fetchInfo(api: Api) {
+  return unwrap(api.info.$get());
 }
 
 export default definePlugin({

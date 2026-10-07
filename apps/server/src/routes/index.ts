@@ -46,6 +46,21 @@ export const problemsRoutes = (s: Services) =>
       await s.problems.writeFile(id, file, content);
       return c.json({ ok: true as const });
     })
+    .post("/file/create", zValidator("json", idQuery.extend({ file: z.string(), content: z.string().optional() })), async (c) => {
+      const { id, file, content } = c.req.valid("json");
+      await s.problems.createFile(id, file, content);
+      return c.json(await s.problems.get(id));
+    })
+    .post("/file/delete", zValidator("json", idQuery.extend({ file: z.string() })), async (c) => {
+      const { id, file } = c.req.valid("json");
+      await s.problems.deleteFile(id, file);
+      return c.json(await s.problems.get(id));
+    })
+    .post("/file/rename", zValidator("json", idQuery.extend({ from: z.string(), to: z.string() })), async (c) => {
+      const { id, from, to } = c.req.valid("json");
+      await s.problems.renameFile(id, from, to);
+      return c.json(await s.problems.get(id));
+    })
     .put("/tests", zValidator("json", idQuery.extend({ tests: z.array(testCaseSchema) })), async (c) => {
       const { id, tests } = c.req.valid("json");
       await s.problems.writeTests(id, tests);

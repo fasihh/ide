@@ -52,11 +52,13 @@ export default definePlugin({
 
 | Member | What it gives you |
 |---|---|
-| `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta`, `setBuffer`, `save`, `addTest`/`updateTest`/`removeTest` |
-| `runner` | state (`phase`, `compile`, per-test state), `compile()`, `run(testIds?)`, `exec(req)` for arbitrary input |
+| `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta`, `setBuffer`, `save`, `createFile`/`renameFile`/`deleteFile`, `addTest`/`updateTest`/`removeTest`/`duplicateTest`/`moveTest` |
+| `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()`, `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
 | `panels` | `register`, `open`, `close`, `toggle`, `useIsOpen`, `list` |
-| `commands` | `register` (with optional `keybinding`), `execute(id, ...args)`, `list` |
+| `commands` | `register` (with optional `keybinding`), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
+| `layout` | `registerPreset({ id, name, panels })`, `applyPreset`, `listPresets`, `saveCurrent(name)`, `deleteSaved`, `reset` |
+| `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive })` — all promise-based |
 | `toolbar` / `statusBar` | `register({ id, order, component })` (status bar also takes `align`) |
 | `events` | `on`/`emit` for `CoreEvents` (augmentable) |
 | `notify` | toasts |
@@ -70,9 +72,13 @@ Every `register`/`on` returns a `Disposable` and is also tracked per plugin auto
 primitives or existing references (`s.problem`, `s.problem?.id`). Building a new object/array inside
 the selector re-renders forever — derive in the component (or `useMemo`) instead.
 
-Commands other plugins can call: `runner.runAll`, `workspace.save`, `workspace.newScratch`,
-`workspace.newProblem`, `tests.add`, `settings.open`, `editor.revealLine(line, col)`,
-`editor.focus`, `view.toggle.<panelId>`.
+Commands other plugins can call (the palette, Ctrl+Shift+P, lists them all): `runner.runAll`,
+`runner.runCustom`, `workspace.save`, `workspace.newScratch`, `workspace.newProblem`, `editor.newFile(name?)`,
+`editor.renameFile(name?)`, `editor.deleteFile(name?)`, `editor.revealLine(line, col)`, `editor.focus`,
+`tests.add`, `tests.import`, `settings.open`, `keybindings.open`, `layout.preset.<id>`, `view.toggle.<panelId>`.
+
+Registering a command with an existing id replaces it — `plugins/format` uses this to wrap
+`workspace.save` with format-on-save. Pass the original `defaultKeybinding` when you do.
 
 ### Custom events
 
@@ -119,17 +125,20 @@ export default plugin;
 Calling it from the web half — fully typed, no hand-written types:
 
 ```ts
-import type { PluginRoutes } from "@cp-ide/plugin-api/web";
+import { type PluginRoutes, unwrap } from "@cp-ide/plugin-api/web";
 import type serverPlugin from "./server.ts";
 
 const api = ctx.rpc<PluginRoutes<typeof serverPlugin>>();
-const res = await api.count.$get();
-const { problems } = await res.json();
+const { problems } = await unwrap(api.count.$get()); // throws the server's { error } on failure
 ```
+
+Prefer `unwrap` over `res.json()`: it drops a zod validator's 400 response from the type.
+Settings used by both halves can live in a shared module (see `plugins/format/src/settings.ts`):
+pass them to `settings` on the server and to `ctx.settings.contribute()` on the web side.
 
 Server `ctx`: `settings` (get/getRaw/all), `problems` (list/get/create/createScratch/updateMeta/
 writeFile/writeTests/dir/root), `runner` (compile/exec), `on(event)` for `ServerEvents`
 (`problem:created`, `problem:updated`, `compile:done`, `settings:changed`), `dataDir`, `log`.
 `setup` may start its own listeners (e.g. the planned Competitive Companion receiver).
 
-See `plugins/toolchain` for a complete small example of both halves.
+See `plugins/toolchain` and `plugins/format` for complete small examples of both halves.

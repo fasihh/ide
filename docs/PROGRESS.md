@@ -3,6 +3,38 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-07 — Phase 2 complete
+
+**Plugin API additions** (`packages/plugin-api/src/web.ts`)
+- `ctx.ui.quickPick / prompt / confirm` (shell renders them in `QuickInput.tsx`)
+- `ctx.layout` presets: `registerPreset`, `applyPreset`, `saveCurrent`, `deleteSaved`, `listPresets`, `reset`
+- `ctx.commands.list()` now returns effective keybindings (+ `defaultKeybinding`), `useList`,
+  `setKeybinding`, `recordKeybinding`, `formatKeybinding`
+- `ctx.workspace.createFile / renameFile / deleteFile / duplicateTest / moveTest`
+- `ctx.runner.runCustom(input)` with `state.custom`
+- `unwrap()` exported for plugins (typed Hono RPC calls that throw `{ error }` messages)
+- Settings: new `record` descriptor type (+ `hidden`), `keybindings`, `editor.vimMode`
+
+**Server** — `POST /api/problems/file/{create,delete,rename}`; renaming the main file updates
+`mainFile` and language. `.ans` is an editable extension.
+
+**New plugin** — `plugins/format` (server route spawns the formatter; settings shared by both halves;
+wraps `workspace.save` for format-on-save).
+
+**Core plugin** — command palette, quick open, layout commands/presets, Keyboard Shortcuts panel,
+Custom Input panel, file tab bar (+ / F2 / double-click rename / ✕ or middle-click delete),
+Vim mode, tests collapse/duplicate/move/import, width-aware panel headers (container queries).
+
+**Web shell** — layout manager rewritten: presets, saved layouts, pinned side sizes re-applied after
+window resizes, default sizes deferred when the dock is built while hidden. A Vite alias maps deep
+`monaco-editor/esm/*` imports (needed by monaco-vim with Monaco 0.57's exports map).
+
+**Verified** — palette + fuzzy filter, applying presets, custom input run, new/rename/delete file,
+keybinding recording and override (old binding inert, new one runs), test move/duplicate/import,
+formatter missing-binary message and success path (stub command), Vim mode status, default layout
+sizes at 1600px. Server tests: 8 passing (incl. file operations). **Not verified live:** the
+window-resize behaviour (the browser pane was hidden during that part of testing).
+
 ## 2026-10-07 — Bug fixes after first use
 
 - Page could scroll: dockview parks hidden "always rendered" panels below the viewport. The shell

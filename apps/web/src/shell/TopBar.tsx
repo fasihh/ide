@@ -11,15 +11,18 @@ import {
   DropdownMenuTrigger,
   Tooltip,
 } from "@cp-ide/ui";
-import { formatKeybinding } from "../core/keybindings.ts";
+import { formatKeybinding, useCommandList } from "../core/keybindings.ts";
 import { layout, useLayout } from "../core/layout.ts";
 import { registry, useRegistry } from "../core/registry.ts";
 import { useWorkspace } from "../core/workspace.ts";
 
 function ViewMenu() {
   const panels = useRegistry((s) => s.panels);
-  const commands = useRegistry((s) => s.commands);
+  const commands = useCommandList();
   const open = useLayout((s) => s.open);
+  useLayout((s) => s.presets);
+  useLayout((s) => s.saved);
+  const presets = layout.listPresets();
   const sorted = [...panels].sort((a, b) => a.title.localeCompare(b.title));
   return (
     <DropdownMenu>
@@ -47,7 +50,17 @@ function ViewMenu() {
           );
         })}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => layout.reset()}>Reset layout</DropdownMenuItem>
+        <DropdownMenuLabel>Layouts</DropdownMenuLabel>
+        {presets.map((p) => {
+          const kb = commands.find((c) => c.id === `layout.preset.${p.id}`)?.keybinding;
+          return (
+            <DropdownMenuItem key={p.id} onSelect={() => layout.applyPreset(p.id)}>
+              {p.name}
+              {kb && <DropdownMenuShortcut>{formatKeybinding(kb)}</DropdownMenuShortcut>}
+            </DropdownMenuItem>
+          );
+        })}
+        <DropdownMenuItem onSelect={() => registry.command("layout.save")?.run()}>Save current layout…</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

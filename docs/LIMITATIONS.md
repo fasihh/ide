@@ -20,13 +20,17 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 |---|---|
 | No C++ IntelliSense (syntax highlighting + word completion only) | clangd over LSP (Phase 5) |
 | Compiler squiggles disappear on reload | Re-run to get them back |
+| Formatting needs `clang-format` / `black` installed (not bundled) | `pip install clang-format black`, or point Settings → Formatting at your own command |
+| Saved layouts live in browser localStorage (per browser profile), not in settings.json | Could move to the server later |
 
 ## Layout & UI
 
 | Limitation | Notes / planned fix |
 |---|---|
-| A layout saved at one window size is restored proportionally at another | View → Reset layout. dockview has no per-group priority (Phase 2 investigation) |
-| Some shortcuts are reserved by the browser (Ctrl+N, Ctrl+T, Ctrl+W, Ctrl+Shift+N) | Hence Alt+N for new scratch; rebindable in Phase 2 |
+| On window resize, side panel sizes are re-applied after dockview's proportional resize (possible brief jump) | dockview has no per-group priority. A layout saved in a much smaller window may still need View → Reset layout |
+| Some shortcuts are reserved by the browser (Ctrl+N, Ctrl+T, Ctrl+W, Ctrl+Shift+N) and can't be bound | Pick another combo in Keyboard Shortcuts |
+| No chord keybindings (e.g. Ctrl+K Ctrl+S) | Single combos only |
+| Global shortcuts win over Vim keys (e.g. Ctrl+B toggles the explorer instead of paging up) | Rebind or unbind the global shortcut in Keyboard Shortcuts |
 | Enabling/disabling a plugin needs a page reload | No hot deactivation yet |
 
 ## Problems & storage

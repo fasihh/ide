@@ -31,9 +31,10 @@
 | `packages/plugin-api` | Types/helpers for plugins: `./web` (WebPluginContext, definePlugin) and `./server` (ServerPluginContext, defineServerPlugin), `Emitter`, disposables |
 | `packages/ui` | shadcn-style components (compact sizes) + design tokens (`styles.css`), incl. verdict colours |
 | `apps/server` | Hono API, services, runner, server plugin host. Exports `AppType` |
-| `apps/web` | Shell + core stores + web plugin host. No feature UI lives here |
+| `apps/web` | Shell (dock, top/status bar, quick input) + core stores + web plugin host. No feature UI lives here |
 | `plugins/core` | All built-in tools (explorer, editor, tests, output, problem, settings, toolbar/status items) |
 | `plugins/toolchain` | Example full-stack plugin (server route + panel + contributed setting) |
+| `plugins/format` | Formatter: server route running clang-format / black, format command, format on save |
 
 Internal packages export TypeScript source directly (no build step); Vite and tsx compile them.
 Imports use explicit `.ts` extensions (`allowImportingTsExtensions`).
@@ -63,6 +64,7 @@ Scratch problems go to `scratch/<yyyy-mm-dd>/scratch-<hhmmss>`.
 | `GET /api/problems/detail?id=` | meta + tests + file contents |
 | `POST /api/problems`, `POST /api/problems/scratch` | create |
 | `PATCH /api/problems/meta` · `PUT /api/problems/file` · `PUT /api/problems/tests` | update |
+| `POST /api/problems/file/{create,delete,rename}` | extra files in a problem (returns the refreshed problem) |
 | `POST /api/run/compile` | `{ language, source, fileName }` → `CompileResult` (`artifactId`) |
 | `POST /api/run/exec` | `{ artifactId, input, expected?, timeLimitMs?, compareMode? }` → `ExecResult` |
 | `/api/plugins/<id>/*` | plugin routes |
@@ -93,8 +95,13 @@ Timing is wall-clock including process start (~10–30 ms on Windows). Memory is
   `params.panelId`, so saved layouts survive plugin changes. Default layout is built from
   `defaultOpen` panels by `placement` (center first, then left/right/bottom). Layout JSON is saved to
   `localStorage["cp-ide.layout.v1"]`; `defaultRenderer="always"` keeps hidden tabs mounted (Monaco state).
+  Side/bottom group pixel sizes are remembered and re-applied after window resizes so the editor
+  absorbs them. Presets (`layout.registerPreset`) list panels to open; saved layouts store full JSON.
+- **Quick input** (`core/ui.ts`, `shell/QuickInput.tsx`): one modal for `ctx.ui.quickPick/prompt/confirm`;
+  fuzzy matching in `core/fuzzy.ts`.
 - **Keybindings** (`core/keybindings.ts`): one capture-phase `keydown` listener matches command
-  keybindings, so commands beat Monaco's own bindings. Browsers reserve some combos (Ctrl+N/T/W).
+  keybindings (user overrides from the `keybindings` setting applied), so commands beat Monaco's own
+  bindings. It also implements `recordKeybinding`. Browsers reserve some combos (Ctrl+N/T/W).
 - **Theme** (`core/theme.ts`): toggles `.dark` on `<html>`, sets `--ui-font-size`/`--editor-font`.
   dockview is themed by `.dockview-theme-cp` in `apps/web/src/index.css`; Monaco themes are derived
   from CSS tokens at runtime (`plugins/core/src/editor/monaco.ts`).

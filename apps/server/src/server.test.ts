@@ -98,6 +98,29 @@ describe("problems", () => {
     assert.equal(again.files.find((f) => f.name === "main.cpp")?.content, "// hi");
   });
 
+  test("extra files: create from template, rename, delete; main file rules", async () => {
+    const p = await problems.createScratch("cpp");
+    await problems.createFile(p.id, "brute.py");
+    await problems.createFile(p.id, "1.in", "5\n");
+    let got = await problems.get(p.id);
+    assert.match(got.files.find((f) => f.name === "brute.py")!.content, /def solve/);
+    assert.equal(got.files.find((f) => f.name === "1.in")!.content, "5\n");
+    await assert.rejects(problems.createFile(p.id, "brute.py"), /already exists/);
+
+    await problems.renameFile(p.id, "brute.py", "gen.py");
+    await problems.deleteFile(p.id, "1.in");
+    await assert.rejects(problems.deleteFile(p.id, "main.cpp"), /main file/);
+    got = await problems.get(p.id);
+    assert.deepEqual(got.files.map((f) => f.name).sort(), ["gen.py", "main.cpp"]);
+
+    // Renaming the main file follows it (and switches language by extension).
+    await problems.renameFile(p.id, "main.cpp", "sol.py");
+    got = await problems.get(p.id);
+    assert.equal(got.meta.mainFile, "sol.py");
+    assert.equal(got.meta.language, "python");
+    await assert.rejects(problems.renameFile(p.id, "sol.py", "sol.txt"), /must stay/);
+  });
+
   test("rejects paths outside the root and bad file names", async () => {
     await assert.rejects(problems.get("../../etc"));
     const p = await problems.createScratch("cpp");

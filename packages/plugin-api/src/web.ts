@@ -79,6 +79,8 @@ export interface RunnerState {
   phase: "idle" | "compiling" | "running";
   compile: CompileResult | null;
   tests: Record<string, TestRunState>;
+  /** Last "run with custom input" (not tied to a test). */
+  custom: TestRunState;
 }
 
 /** A zustand-style store handle. `use` is a React hook. */
@@ -105,9 +107,18 @@ export interface WorkspaceApi extends StoreHandle<WorkspaceState> {
   save(file?: string): Promise<void>;
   saveAll(): Promise<void>;
 
+  /** Create a file in the open problem (.cpp/.py start from the template unless `content` is given). */
+  createFile(name: string, content?: string): Promise<void>;
+  /** Rename a file; renaming the main file keeps it the main file. */
+  renameFile(from: string, to: string): Promise<void>;
+  deleteFile(name: string): Promise<void>;
+
   addTest(test?: Partial<Omit<TestCase, "id">>): TestCase;
   updateTest(id: string, patch: Partial<Omit<TestCase, "id">>): void;
   removeTest(id: string): void;
+  duplicateTest(id: string): TestCase | undefined;
+  /** Move a test up (-1) or down (+1). */
+  moveTest(id: string, delta: number): void;
 }
 
 export interface RunnerApi extends StoreHandle<RunnerState> {
@@ -115,6 +126,8 @@ export interface RunnerApi extends StoreHandle<RunnerState> {
   compile(): Promise<CompileResult>;
   /** Run the given tests (default: all enabled tests) of the active problem. */
   run(testIds?: string[]): Promise<void>;
+  /** Compile and run the main file on `input` without creating a test (result in `state.custom`). */
+  runCustom(input: string): Promise<ExecResult | undefined>;
   /** Low level: run a compiled artifact on arbitrary input. */
   exec(req: ExecRequest): Promise<ExecResult>;
 }
@@ -192,10 +205,25 @@ export interface StatusBarContribution extends UiItemContribution {
   align: "left" | "right";
 }
 
+/** A registered command with its effective keybinding (user override applied). */
+export interface CommandInfo extends CommandContribution {
+  /** The keybinding the command registered with, before user overrides. */
+  defaultKeybinding?: string;
+  pluginId: string;
+}
+
 export interface CommandsApi {
   register(command: CommandContribution): Disposable;
   execute(id: string, ...args: unknown[]): Promise<unknown>;
-  list(): CommandContribution[];
+  list(): CommandInfo[];
+  /** React hook version of `list`. */
+  useList(): CommandInfo[];
+  /** Override a command's keybinding (`""` = unbound, `null` = back to default). */
+  setKeybinding(id: string, binding: string | null): Promise<void>;
+  /** Capture the next key combination the user presses (Esc cancels → undefined). */
+  recordKeybinding(): Promise<string | undefined>;
+  /** "ctrl+shift+p" → "Ctrl+Shift+P" (⌘ on macOS). */
+  formatKeybinding(binding: string): string;
 }
 
 export interface PanelsApi {
@@ -206,6 +234,42 @@ export interface PanelsApi {
   /** React hook: whether a panel is currently open in the layout. */
   useIsOpen(id: string): boolean;
   list(): PanelContribution[];
+}
+
+export interface LayoutPreset {
+  id: string;
+  name: string;
+  description?: string;
+  /** Panels to open, laid out by their placements. Everything else is closed. */
+  panels: string[];
+}
+
+export interface LayoutApi {
+  /** Built-in, plugin and user-saved presets. */
+  listPresets(): (LayoutPreset & { saved?: boolean })[];
+  registerPreset(preset: LayoutPreset): Disposable;
+  applyPreset(id: string): void;
+  /** Save the current arrangement (sizes included) under `name`. */
+  saveCurrent(name: string): void;
+  deleteSaved(id: string): void;
+  reset(): void;
+}
+
+export interface QuickPickItem<T> {
+  label: string;
+  description?: string;
+  detail?: string;
+  /** Shown right-aligned (e.g. a keybinding). */
+  hint?: string;
+  value: T;
+}
+
+export interface UiApi {
+  /** Fuzzy-filterable picker (like VS Code's quick pick). Resolves undefined when dismissed. */
+  quickPick<T>(items: QuickPickItem<T>[], options?: { placeholder?: string; title?: string }): Promise<T | undefined>;
+  /** Single-line text prompt. `validate` returns an error message or undefined. */
+  prompt(options: { title: string; placeholder?: string; value?: string; validate?: (v: string) => string | undefined }): Promise<string | undefined>;
+  confirm(options: { title: string; message?: string; confirmLabel?: string; destructive?: boolean }): Promise<boolean>;
 }
 
 export interface NotifyApi {
@@ -237,6 +301,8 @@ export interface WebPluginContext {
   readonly statusBar: { register(item: StatusBarContribution): Disposable };
   readonly toolbar: { register(item: UiItemContribution): Disposable };
   readonly events: EventsApi;
+  readonly layout: LayoutApi;
+  readonly ui: UiApi;
   readonly notify: NotifyApi;
   /** The resolved color theme ("system" already applied). `use` is a React hook. */
   readonly theme: { get(): "dark" | "light"; use(): "dark" | "light" };

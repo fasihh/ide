@@ -2,6 +2,7 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "@cp-ide/ui";
 import { useTheme } from "../core/theme.ts";
 import { Dock } from "./Dock.tsx";
+import { QuickInput } from "./QuickInput.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { TopBar } from "./TopBar.tsx";
 
@@ -16,6 +17,7 @@ export function App() {
         </main>
         <StatusBar />
       </div>
+      <QuickInput />
       <Toaster theme={resolved} position="bottom-right" toastOptions={{ className: "text-xs" }} />
     </TooltipProvider>
   );

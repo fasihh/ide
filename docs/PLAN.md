@@ -54,17 +54,18 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
 - ✅ Light/dark/system theme, UI & editor fonts
 - ✅ Tests: comparator unit tests, server integration tests against real g++/python
 
-## Phase 2 — Layout & editing polish ⬜
+## Phase 2 — Layout & editing polish ✅
 
-- ⬜ Command palette (Ctrl+Shift+P) over `ctx.commands.list()`; quick open problems (Ctrl+P)
-- ⬜ Layout presets (Focus = editor+tests, Debug = all) as commands; save custom presets
-- ⬜ Keep the editor column absorbing window resizes (dockview has no group priority — investigate
-  constraints / custom resize handling)
-- ⬜ User keybinding overrides (setting `keybindings` map: command id → binding)
-- ⬜ Vim mode (`monaco-vim`), format document (clang-format / black, server-side)
-- ⬜ Create / rename / delete extra files in a problem (e.g. `brute.py`, `gen.py`) from the editor tabs
-- ⬜ Tests: collapse/expand all, reorder, duplicate, import from clipboard/files (`*.in`/`*.out`)
-- ⬜ Run with custom stdin without creating a test (scratch input box)
+- ✅ Command palette (Ctrl+Shift+P) over all commands (recently used first, fuzzy match); quick open problems (Ctrl+P)
+- ✅ Layout presets: Default / Focus / Zen / Everything (Ctrl+Alt+1–4), plugin-registered presets, save/apply/delete custom layouts
+- 🟡 Editor column absorbs window resizes: side/bottom group sizes are pinned and re-applied after resizes
+  (dockview has no group priority). Default sizes verified; live window-resize behaviour needs a manual check
+- ✅ User keybinding overrides (`keybindings` setting) + Keyboard Shortcuts panel (record keys, conflicts, reset)
+- ✅ Vim mode (`monaco-vim`, `editor.vimMode`) with status line
+- ✅ Format document (Shift+Alt+F) as the `format` plugin — clang-format / black, configurable commands, optional format on save
+- ✅ Create / rename (F2, double-click) / delete extra files in a problem from the editor tab bar; new .cpp/.py start from the template
+- ✅ Tests: collapse/expand all, move up/down, duplicate, import `*.in` + `*.out`/`*.ans` files
+- ✅ Custom Input panel: run on scratch stdin without creating a test (Ctrl+Shift+Enter), save it as a test
 
 ## Phase 3 — Problem management ⬜
 

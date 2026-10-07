@@ -1,13 +1,16 @@
-import { Code2, FolderTree, Info, ListChecks, Settings, Terminal } from "lucide-react";
+import { Code2, FolderTree, Info, Keyboard, ListChecks, Settings, SquareTerminal, Terminal } from "lucide-react";
 import { type PanelContribution, definePlugin } from "@cp-ide/plugin-api/web";
-import { EditorPanel, focusEditor, installDiagnostics, revealLine } from "./editor/EditorPanel.tsx";
-import { TestsPanel } from "./tests/TestsPanel.tsx";
+import { EditorPanel, deleteFile, focusEditor, installDiagnostics, newFile, renameFile, revealLine } from "./editor/EditorPanel.tsx";
+import { TestsPanel, importTestFiles } from "./tests/TestsPanel.tsx";
+import { CustomInputPanel, readCustomInput } from "./tests/CustomInputPanel.tsx";
 import { OutputPanel } from "./output/OutputPanel.tsx";
 import { ExplorerPanel } from "./explorer/ExplorerPanel.tsx";
 import { ProblemPanel } from "./problem/ProblemPanel.tsx";
 import { SettingsPanel } from "./settings/SettingsPanel.tsx";
+import { KeybindingsPanel } from "./settings/KeybindingsPanel.tsx";
 import { openNewProblemDialog } from "./chrome/NewProblemDialog.tsx";
 import { LanguageStatus, NewMenu, RootStatus, RunButton, SaveStatus, TestsStatus } from "./chrome/items.tsx";
+import { applyLayout, commandPalette, deleteLayout, quickOpen, saveLayout } from "./chrome/palette.ts";
 
 /**
  * The built-in tools. Everything here goes through the public plugin API — a third-party
@@ -16,7 +19,7 @@ import { LanguageStatus, NewMenu, RootStatus, RunButton, SaveStatus, TestsStatus
 export default definePlugin({
   id: "core",
   name: "Core",
-  description: "Explorer, editor, tests, output, problem info and settings.",
+  description: "Explorer, editor, tests, output, problem info, settings, palette and layouts.",
   required: true,
 
   activate(ctx) {
@@ -26,34 +29,81 @@ export default definePlugin({
       { id: "core.editor", title: "Code", icon: Code2, component: EditorPanel, placement: "center", defaultOpen: true, order: 0, keybinding: "alt+1" },
       { id: "core.tests", title: "Tests", icon: ListChecks, component: TestsPanel, placement: "right", defaultOpen: true, order: 0, keybinding: "alt+2" },
       { id: "core.problem", title: "Problem", icon: Info, component: ProblemPanel, placement: "right", defaultOpen: true, order: 1, keybinding: "alt+3" },
-      { id: "core.output", title: "Output", icon: Terminal, component: OutputPanel, placement: "bottom", defaultOpen: true, keybinding: "ctrl+j" },
+      { id: "core.output", title: "Output", icon: Terminal, component: OutputPanel, placement: "bottom", defaultOpen: true, order: 0, keybinding: "ctrl+j" },
+      { id: "core.custom", title: "Custom Input", icon: SquareTerminal, component: CustomInputPanel, placement: "bottom", defaultOpen: true, order: 1, keybinding: "alt+4" },
       { id: "core.settings", title: "Settings", icon: Settings, component: SettingsPanel, placement: "center", order: 10 },
+      { id: "core.keybindings", title: "Keyboard Shortcuts", icon: Keyboard, component: KeybindingsPanel, placement: "center", order: 11 },
     ];
 
     for (const { keybinding, ...panel } of panels) {
       ctx.panels.register(panel);
-      if (keybinding) {
-        ctx.commands.register({
-          id: `view.toggle.${panel.id}`,
-          title: `Toggle ${panel.title}`,
-          category: "View",
-          keybinding,
-          run: () => ctx.panels.toggle(panel.id),
-        });
-      }
+      ctx.commands.register({
+        id: `view.toggle.${panel.id}`,
+        title: `Toggle ${panel.title}`,
+        category: "View",
+        keybinding,
+        run: () => ctx.panels.toggle(panel.id),
+      });
     }
 
-    // ---- commands ----
-    ctx.commands.register({ id: "runner.runAll", title: "Run all tests", category: "Run", keybinding: "ctrl+enter", run: () => ctx.runner.run() });
-    ctx.commands.register({ id: "workspace.save", title: "Save", category: "File", keybinding: "ctrl+s", run: () => ctx.workspace.saveAll() });
-    ctx.commands.register({
-      id: "workspace.newScratch",
-      title: "New scratch problem",
-      category: "File",
-      keybinding: "alt+n",
-      run: () => ctx.workspace.createScratch(),
+    // ---- layouts ----
+    ctx.layout.registerPreset({ id: "focus", name: "Focus", description: "Code + tests", panels: ["core.editor", "core.tests"] });
+    ctx.layout.registerPreset({ id: "zen", name: "Zen", description: "Code only", panels: ["core.editor"] });
+    ctx.layout.registerPreset({
+      id: "everything",
+      name: "Everything",
+      description: "All core panels",
+      panels: ["core.explorer", "core.editor", "core.tests", "core.problem", "core.output", "core.custom"],
     });
+    const presetKeys: Record<string, string> = { default: "ctrl+alt+1", focus: "ctrl+alt+2", zen: "ctrl+alt+3", everything: "ctrl+alt+4" };
+    for (const p of ctx.layout.listPresets().filter((x) => !x.saved)) {
+      ctx.commands.register({ id: `layout.preset.${p.id}`, title: `Use ${p.name} layout`, category: "Layout", keybinding: presetKeys[p.id], run: () => ctx.layout.applyPreset(p.id) });
+    }
+    ctx.commands.register({ id: "layout.apply", title: "Apply layout…", category: "Layout", run: () => applyLayout(ctx) });
+    ctx.commands.register({ id: "layout.save", title: "Save current layout…", category: "Layout", run: () => saveLayout(ctx) });
+    ctx.commands.register({ id: "layout.deleteSaved", title: "Delete saved layout…", category: "Layout", run: () => deleteLayout(ctx) });
+    ctx.commands.register({ id: "layout.reset", title: "Reset layout", category: "Layout", run: () => ctx.layout.reset() });
+
+    // ---- workbench ----
+    ctx.commands.register({ id: "workbench.commandPalette", title: "Command palette", category: "View", keybinding: "ctrl+shift+p", run: () => commandPalette(ctx) });
+    ctx.commands.register({ id: "workbench.quickOpen", title: "Go to problem…", category: "File", keybinding: "ctrl+p", run: () => quickOpen(ctx) });
+    ctx.commands.register({ id: "settings.open", title: "Open settings", category: "Preferences", keybinding: "ctrl+,", run: () => ctx.panels.open("core.settings") });
+    ctx.commands.register({ id: "keybindings.open", title: "Keyboard shortcuts", category: "Preferences", keybinding: "ctrl+alt+k", run: () => ctx.panels.open("core.keybindings") });
+
+    // ---- run ----
+    ctx.commands.register({ id: "runner.runAll", title: "Run all tests", category: "Run", keybinding: "ctrl+enter", run: () => ctx.runner.run() });
+    ctx.commands.register({
+      id: "runner.runCustom",
+      title: "Run with custom input",
+      category: "Run",
+      keybinding: "ctrl+shift+enter",
+      run: () => {
+        const id = ctx.workspace.get().problem?.id;
+        if (!id) return;
+        ctx.panels.open("core.custom");
+        return ctx.runner.runCustom(readCustomInput(id));
+      },
+    });
+
+    // ---- files & problems ----
+    ctx.commands.register({ id: "workspace.save", title: "Save", category: "File", keybinding: "ctrl+s", run: () => ctx.workspace.saveAll() });
+    ctx.commands.register({ id: "workspace.newScratch", title: "New scratch problem", category: "File", keybinding: "alt+n", run: () => ctx.workspace.createScratch() });
     ctx.commands.register({ id: "workspace.newProblem", title: "New problem…", category: "File", keybinding: "alt+shift+n", run: openNewProblemDialog });
+    ctx.commands.register({ id: "editor.newFile", title: "New file in problem…", category: "File", run: (name?: string) => newFile(ctx, name) });
+    ctx.commands.register({ id: "editor.renameFile", title: "Rename file…", category: "File", keybinding: "f2", run: (name?: string) => renameFile(ctx, name) });
+    ctx.commands.register({ id: "editor.deleteFile", title: "Delete file…", category: "File", run: (name?: string) => deleteFile(ctx, name) });
+
+    // ---- editor ----
+    ctx.commands.register({ id: "editor.revealLine", title: "Go to line", category: "Editor", run: (line: number, column?: number) => revealLine(line, column) });
+    ctx.commands.register({ id: "editor.focus", title: "Focus editor", category: "Editor", keybinding: "alt+e", run: focusEditor });
+    ctx.commands.register({
+      id: "editor.toggleVim",
+      title: "Toggle Vim mode",
+      category: "Editor",
+      run: () => ctx.settings.set("editor.vimMode", !ctx.settings.get("editor.vimMode")),
+    });
+
+    // ---- tests ----
     ctx.commands.register({
       id: "tests.add",
       title: "Add test",
@@ -64,9 +114,7 @@ export default definePlugin({
         ctx.panels.open("core.tests");
       },
     });
-    ctx.commands.register({ id: "settings.open", title: "Open settings", category: "Preferences", keybinding: "ctrl+,", run: () => ctx.panels.open("core.settings") });
-    ctx.commands.register({ id: "editor.revealLine", title: "Go to line", category: "Editor", run: (line: number, column?: number) => revealLine(line, column) });
-    ctx.commands.register({ id: "editor.focus", title: "Focus editor", category: "Editor", keybinding: "alt+e", run: focusEditor });
+    ctx.commands.register({ id: "tests.import", title: "Import .in/.out files as tests", category: "Tests", run: () => importTestFiles(ctx) });
 
     // ---- reactions ----
     installDiagnostics(ctx);
@@ -88,4 +136,3 @@ export default definePlugin({
     ctx.statusBar.register({ id: "core.save", align: "right", order: 10, component: SaveStatus });
   },
 });
-

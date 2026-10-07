@@ -18,7 +18,9 @@ export type SettingDescriptor =
   | (Base & { type: "number"; default: number; min?: number; max?: number; step?: number })
   | (Base & { type: "boolean"; default: boolean })
   | (Base & { type: "enum"; default: string; options: readonly { value: string; label: string }[] })
-  | (Base & { type: "stringList"; default: string[] });
+  | (Base & { type: "stringList"; default: string[] })
+  /** String → string map. `hidden` settings are edited by a dedicated UI (e.g. keyboard shortcuts). */
+  | (Base & { type: "record"; default: Record<string, string>; hidden?: boolean });
 
 export type SettingDescriptors = Record<string, SettingDescriptor>;
 
@@ -34,7 +36,9 @@ export type SettingValue<D> = D extends { type: "string" }
           : never
         : D extends { type: "stringList" }
           ? string[]
-          : never;
+          : D extends { type: "record" }
+            ? Record<string, string>
+            : never;
 
 export type SettingValues<T extends SettingDescriptors> = { [K in keyof T]: SettingValue<T[K]> };
 
@@ -71,6 +75,13 @@ export function validateSetting(
       return Array.isArray(value) && value.every((v) => typeof v === "string")
         ? { ok: true, value }
         : { ok: false, error: "expected a list of strings" };
+    case "record":
+      return value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        Object.values(value).every((v) => typeof v === "string")
+        ? { ok: true, value }
+        : { ok: false, error: "expected an object of strings" };
   }
 }
 
@@ -121,6 +132,13 @@ export const coreSettings = defineSettings({
       { value: "relative", label: "Relative" },
       { value: "off", label: "Off" },
     ],
+  },
+  "editor.vimMode": {
+    section: "Editor",
+    label: "Vim mode",
+    description: "Vim keybindings in the code editor.",
+    type: "boolean",
+    default: false,
   },
   "editor.autoSave": {
     section: "Editor",
@@ -251,6 +269,16 @@ export const coreSettings = defineSettings({
     default: 4096,
     min: 16,
     max: 262144,
+  },
+
+  // Keyboard
+  keybindings: {
+    section: "Keyboard",
+    label: "Keyboard shortcuts",
+    description: "Overrides of default shortcuts (command id → keys, empty = unbound). Edit in the Keyboard Shortcuts panel.",
+    type: "record",
+    default: {},
+    hidden: true,
   },
 
   // Plugins

@@ -8,7 +8,9 @@ import {
 } from "@cp-ide/plugin-api/web";
 import type { SettingDescriptors } from "@cp-ide/shared";
 import { api, unwrap } from "../api.ts";
+import { formatKeybinding, listCommands, recordKeybinding, setKeybinding, useCommandList } from "./keybindings.ts";
 import { layout, useLayout } from "./layout.ts";
+import { uiApi } from "./ui.ts";
 import { notify } from "./notify.ts";
 import { events, registry } from "./registry.ts";
 import { runnerApi } from "./runner.ts";
@@ -54,7 +56,11 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
         if (!cmd) throw new Error(`Unknown command: ${id}`);
         return cmd.run(...args);
       },
-      list: () => registry.commandsList(),
+      list: listCommands,
+      useList: useCommandList,
+      setKeybinding,
+      recordKeybinding,
+      formatKeybinding,
     },
     panels: {
       register: (panel) => disposables.add(registry.addPanel({ ...panel, owner: ctx })),
@@ -70,6 +76,15 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
       on: (event, handler) => disposables.add(events.on(event, handler)),
       emit: (event, payload) => events.emit(event, payload),
     },
+    layout: {
+      listPresets: layout.listPresets,
+      registerPreset: (preset) => disposables.add(layout.registerPreset(preset)),
+      applyPreset: layout.applyPreset,
+      saveCurrent: layout.saveCurrent,
+      deleteSaved: layout.deleteSaved,
+      reset: layout.reset,
+    },
+    ui: uiApi,
     notify,
     theme: themeApi,
     plugins: { list: () => [...infos] },

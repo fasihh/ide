@@ -140,6 +140,30 @@ export const workspace: Omit<WorkspaceApi, keyof import("@cp-ide/plugin-api/web"
     await Promise.all(Object.keys(get().buffers).map((f) => workspace.save(f)));
   },
 
+  async createFile(name, content) {
+    const p = get().problem;
+    if (!p) return;
+    applyProblem(await unwrap(api.problems.file.create.$post({ json: { id: p.id, file: name, content } })));
+    set({ activeFile: name });
+  },
+
+  async renameFile(from, to) {
+    const p = get().problem;
+    if (!p || from === to) return;
+    await workspace.save(from);
+    applyProblem(await unwrap(api.problems.file.rename.$post({ json: { id: p.id, from, to } })));
+    if (get().activeFile === from || !get().buffers[get().activeFile ?? ""]) set({ activeFile: to });
+    await workspace.refreshProblems();
+  },
+
+  async deleteFile(name) {
+    const p = get().problem;
+    if (!p) return;
+    clearTimeout(saveTimers.get(name));
+    applyProblem(await unwrap(api.problems.file.delete.$post({ json: { id: p.id, file: name } })));
+    if (get().activeFile === name) set({ activeFile: get().problem?.meta.mainFile ?? null });
+  },
+
   addTest(test) {
     const tc: TestCase = {
       id: crypto.randomUUID(),
@@ -163,7 +187,41 @@ export const workspace: Omit<WorkspaceApi, keyof import("@cp-ide/plugin-api/web"
     setProblem((p) => ({ ...p, tests: p.tests.filter((t) => t.id !== id) }));
     scheduleTestsSave();
   },
+
+  duplicateTest(id) {
+    const p = get().problem;
+    const i = p?.tests.findIndex((t) => t.id === id) ?? -1;
+    if (!p || i < 0) return undefined;
+    const copy: TestCase = { ...p.tests[i]!, id: crypto.randomUUID(), isSample: false };
+    setProblem((x) => ({ ...x, tests: [...x.tests.slice(0, i + 1), copy, ...x.tests.slice(i + 1)] }));
+    scheduleTestsSave();
+    return copy;
+  },
+
+  moveTest(id, delta) {
+    setProblem((p) => {
+      const i = p.tests.findIndex((t) => t.id === id);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= p.tests.length) return p;
+      const tests = [...p.tests];
+      [tests[i], tests[j]] = [tests[j]!, tests[i]!];
+      return { ...p, tests };
+    });
+    scheduleTestsSave();
+  },
 };
+
+/** Replace the open problem with a fresh copy from the server, keeping unsaved edits. */
+function applyProblem(problem: Problem) {
+  const old = get().buffers;
+  const buffers = Object.fromEntries(
+    problem.files.map((f) => {
+      const prev = old[f.name];
+      return [f.name, prev && prev.content !== prev.saved ? { content: prev.content, saved: f.content } : { content: f.content, saved: f.content }];
+    }),
+  );
+  set({ problem, buffers });
+}
 
 export const workspaceApi: WorkspaceApi = {
   ...workspace,

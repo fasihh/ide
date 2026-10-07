@@ -21,7 +21,7 @@ import type { SettingsService } from "./settings.ts";
 
 const META_FILE = "problem.json";
 const TESTS_FILE = "tests.json";
-const SOURCE_EXTS = new Set([".cpp", ".cc", ".cxx", ".h", ".hpp", ".py", ".txt", ".in", ".out", ".md"]);
+const SOURCE_EXTS = new Set([".cpp", ".cc", ".cxx", ".h", ".hpp", ".py", ".txt", ".in", ".out", ".ans", ".md"]);
 const MAX_SCAN_DEPTH = 5;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -215,12 +215,56 @@ export class ProblemsService implements ProblemsApi {
   }
 
   async writeFile(id: string, file: string, content: string): Promise<void> {
-    if (file !== path.basename(file) || !SOURCE_EXTS.has(path.extname(file).toLowerCase())) {
-      throw new HttpError(400, `Not an editable file name: ${file}`);
-    }
+    this.checkFileName(file);
     const dir = this.dir(id);
     await fs.writeFile(path.join(dir, file), content);
     await this.touch(dir);
+  }
+
+  /** Create a new file; source files start from the language template unless `content` is given. */
+  async createFile(id: string, file: string, content?: string): Promise<void> {
+    const p = path.join(this.dir(id), this.checkFileName(file));
+    if (await exists(p)) throw new HttpError(409, `${file} already exists`);
+    const ext = path.extname(file).toLowerCase();
+    const language: Language | null = [".cpp", ".cc", ".cxx"].includes(ext) ? "cpp" : ext === ".py" ? "python" : null;
+    await fs.writeFile(p, content ?? (language ? await this.template(language) : ""));
+    await this.touch(this.dir(id));
+  }
+
+  async deleteFile(id: string, file: string): Promise<void> {
+    const dir = this.dir(id);
+    const meta = await this.readMeta(dir);
+    if (file === meta.mainFile) throw new HttpError(400, "The main file cannot be deleted");
+    await fs.rm(path.join(dir, this.checkFileName(file)));
+    await this.touch(dir);
+  }
+
+  /** Rename a file; renaming the main file updates `mainFile` (and the language, by extension). */
+  async renameFile(id: string, from: string, to: string): Promise<void> {
+    const dir = this.dir(id);
+    const src = path.join(dir, this.checkFileName(from));
+    const dst = path.join(dir, this.checkFileName(to));
+    if (await exists(dst)) throw new HttpError(409, `${to} already exists`);
+    await fs.rename(src, dst);
+    const meta = await this.readMeta(dir);
+    if (meta.mainFile === from) {
+      const ext = path.extname(to).toLowerCase();
+      const language: Language | null = [".cpp", ".cc", ".cxx"].includes(ext) ? "cpp" : ext === ".py" ? "python" : null;
+      if (!language) {
+        await fs.rename(dst, src);
+        throw new HttpError(400, "The main file must stay a .cpp or .py file");
+      }
+      await writeJson(path.join(dir, META_FILE), { ...meta, mainFile: to, language, updatedAt: now() });
+    } else {
+      await this.touch(dir);
+    }
+  }
+
+  private checkFileName(file: string): string {
+    if (!file || file !== path.basename(file) || !SOURCE_EXTS.has(path.extname(file).toLowerCase())) {
+      throw new HttpError(400, `Not an editable file name: ${file} (allowed: ${[...SOURCE_EXTS].join(" ")})`);
+    }
+    return file;
   }
 
   async writeTests(id: string, tests: TestCase[]): Promise<void> {

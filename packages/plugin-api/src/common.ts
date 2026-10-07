@@ -55,3 +55,26 @@ export class Emitter<Events extends object> {
     }
   }
 }
+
+/**
+ * JSON body type of the non-error responses in a Hono client response union. Responses with an
+ * explicit error status (e.g. a validator's 400) have `ok: false` and are dropped.
+ */
+export type SuccessJson<R> = R extends { ok: false } ? never : R extends { json(): Promise<infer T> } ? T : never;
+
+/**
+ * Await a Hono RPC call and return its typed JSON body, throwing the server's `{ error }`
+ * message (or the status) on non-2xx responses.
+ *
+ *   const data = await unwrap(api.items.$get());
+ */
+export async function unwrap<R extends { ok: boolean; status: number; json(): Promise<unknown> }>(
+  request: Promise<R>,
+): Promise<SuccessJson<R>> {
+  const res = await request;
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    throw new Error(typeof body?.error === "string" ? body.error : `Request failed (${res.status})`);
+  }
+  return (await res.json()) as SuccessJson<R>;
+}

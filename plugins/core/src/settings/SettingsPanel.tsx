@@ -86,6 +86,14 @@ function PluginsControl({ ctx, value, onCommit }: { ctx: WebPluginContext; value
 
 function Control({ ctx, k, d, value, update }: { ctx: WebPluginContext; k: string; d: SettingDescriptor; value: unknown; update: (v: unknown) => void }) {
   if (k === "plugins.disabled") return <PluginsControl ctx={ctx} value={value as string[]} onCommit={update} />;
+  if (k === "keybindings") {
+    const count = Object.keys((value as Record<string, string>) ?? {}).length;
+    return (
+      <Button variant="outline" size="sm" onClick={() => ctx.commands.execute("keybindings.open")}>
+        Open keyboard shortcuts{count ? ` (${count} customised)` : ""}
+      </Button>
+    );
+  }
   switch (d.type) {
     case "boolean":
       return <Switch checked={!!value} onCheckedChange={update} />;
@@ -106,6 +114,8 @@ function Control({ ctx, k, d, value, update }: { ctx: WebPluginContext; k: strin
           </SelectContent>
         </Select>
       );
+    case "record":
+      return <span className="text-[0.6875rem] text-muted-foreground">Edit in ~/.cp-ide/settings.json</span>;
     case "stringList":
       return (
         <TextControl
@@ -121,7 +131,9 @@ function Control({ ctx, k, d, value, update }: { ctx: WebPluginContext; k: strin
         />
       );
     default:
-      return <TextControl value={String(value ?? "")} multiline={d.multiline} placeholder={d.placeholder} onCommit={update} />;
+      return d.type === "string" ? (
+        <TextControl value={String(value ?? "")} multiline={d.multiline} placeholder={d.placeholder} onCommit={update} />
+      ) : null;
   }
 }
 

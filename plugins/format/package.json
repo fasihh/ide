@@ -1,0 +1,20 @@
+{
+  "name": "@cp-ide/plugin-format",
+  "private": true,
+  "type": "module",
+  "description": "Format the current file with clang-format (C++) or black (Python).",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/shared": "workspace:*",
+    "@hono/zod-validator": "^0.9.1",
+    "hono": "^4.13.13",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19"
+  }
+}

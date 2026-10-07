@@ -46,6 +46,9 @@ export interface ProblemsService {
   updateMeta(id: string, patch: ProblemMetaPatch): Promise<Problem["meta"]>;
   writeFile(id: string, file: string, content: string): Promise<void>;
   writeTests(id: string, tests: TestCase[]): Promise<void>;
+  createFile(id: string, file: string, content?: string): Promise<void>;
+  deleteFile(id: string, file: string): Promise<void>;
+  renameFile(id: string, from: string, to: string): Promise<void>;
   /** Absolute folder of a problem. */
   dir(id: string): string;
 }
