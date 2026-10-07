@@ -61,6 +61,38 @@ export function ProblemPanel({ ctx }: PanelProps) {
         </Label>
         <CommitInput placeholder="https://…" value={meta.url ?? ""} onCommit={(url) => update({ url: url.trim() || undefined })} />
       </div>
+      <div className="space-y-2 rounded-md border p-2.5">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <Label>Interactive problem</Label>
+            <div className="mt-0.5 text-[0.6875rem] text-muted-foreground">
+              Tests talk to an interactor (your judge program) instead of comparing output.
+            </div>
+          </div>
+          <Switch checked={!!meta.interactive} onCheckedChange={(on) => update({ interactive: on })} />
+        </div>
+        {meta.interactive && (
+          <div className="grid gap-1.5">
+            <Label>Interactor</Label>
+            <Select value={meta.interactor ?? "interactor.cpp"} onValueChange={(v) => update({ interactor: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {interactorChoices.map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="text-[0.625rem] text-muted-foreground">
+              Started as <span className="font-mono">interactor input.txt output.txt answer.txt</span>; exit code 0 = AC, 1 = WA. See the comments in the
+              template.
+            </div>
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
           <Label>Status</Label>
@@ -120,38 +152,6 @@ export function ProblemPanel({ ctx }: PanelProps) {
             onCommit={(v) => update({ floatEpsilon: v.trim() === "" || Number.isNaN(Number(v)) ? undefined : Math.max(0, Number(v)) })}
           />
         </div>
-      </div>
-      <div className="space-y-2 rounded-md border p-2.5">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <Label>Interactive problem</Label>
-            <div className="mt-0.5 text-[0.6875rem] text-muted-foreground">
-              Tests talk to an interactor (your judge program) instead of comparing output.
-            </div>
-          </div>
-          <Switch checked={!!meta.interactive} onCheckedChange={(on) => update({ interactive: on })} />
-        </div>
-        {meta.interactive && (
-          <div className="grid gap-1.5">
-            <Label>Interactor</Label>
-            <Select value={meta.interactor ?? "interactor.cpp"} onValueChange={(v) => update({ interactor: v })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {interactorChoices.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {f}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="text-[0.625rem] text-muted-foreground">
-              Started as <span className="font-mono">interactor input.txt output.txt answer.txt</span>; exit code 0 = AC, 1 = WA. See the comments in the
-              template.
-            </div>
-          </div>
-        )}
       </div>
       <div className="grid gap-1.5">
         <Label>Tags</Label>

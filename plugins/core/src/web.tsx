@@ -107,6 +107,27 @@ export default definePlugin({
       });
     }
 
+    ctx.commands.register({
+      id: "problems.toggleInteractive",
+      title: "Toggle interactive problem",
+      category: "Problem",
+      run: () => {
+        const p = ctx.workspace.get().problem;
+        if (p) return ctx.workspace.updateMeta({ interactive: !p.meta.interactive });
+      },
+    });
+    ctx.commands.register({
+      id: "problems.openInteractor",
+      title: "Open interactor file",
+      category: "Problem",
+      run: () => {
+        const p = ctx.workspace.get().problem;
+        if (!p?.meta.interactive) return ctx.notify.info("Not an interactive problem", "Turn it on with Problem: Toggle interactive problem.");
+        ctx.workspace.setActiveFile(p.meta.interactor ?? "interactor.cpp");
+        ctx.panels.open("core.editor");
+      },
+    });
+
     // ---- library ----
     ctx.commands.register({ id: "library.open", title: "Templates & snippets", category: "Preferences", run: () => ctx.panels.open("core.library") });
     ctx.commands.register({ id: "snippets.insert", title: "Insert snippet…", category: "Editor", keybinding: "ctrl+alt+i", run: () => pickSnippet(ctx) });
