@@ -3,6 +3,14 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-07 — Vim mode polish
+
+- Vim mode is shown as a coloured pill (NORMAL blue, INSERT green, VISUAL purple, REPLACE red) by
+  subclassing monaco-vim's `StatusBar` (`plugins/core/src/editor/EditorPanel.tsx`).
+- Editing-mode dropdown (Default / Vim) pinned to the right end of the editor's file tab bar, Zed-style;
+  it writes the same `editor.vimMode` setting as the Settings panel.
+- Feedback on the window-resize behaviour: only a slight improvement — still open (see LIMITATIONS).
+
 ## 2026-10-07 — Phase 2 complete
 
 **Plugin API additions** (`packages/plugin-api/src/web.ts`)

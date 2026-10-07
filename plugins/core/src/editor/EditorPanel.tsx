@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { FilePlus2, Plus, X, Zap } from "lucide-react";
+import { Check, ChevronDown, FilePlus2, Keyboard, Plus, X, Zap } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
-import { Button, Kbd, Tooltip, cn } from "@cp-ide/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Kbd,
+  Tooltip,
+  cn,
+} from "@cp-ide/ui";
 import { defineThemes, monaco } from "./monaco.ts";
 import { parseDiagnostics } from "./diagnostics.ts";
 
@@ -96,14 +107,40 @@ export async function deleteFile(ctx: WebPluginContext, file?: string) {
   if (ok) await ctx.workspace.deleteFile(name).catch((e) => ctx.notify.error("Could not delete file", String(e?.message ?? e)));
 }
 
-/** Attach monaco-vim while `enabled`; the status line (mode, pending keys) renders into `statusRef`. */
+/** Colours for the Vim mode pill (Zed-style): normal = blue, insert = green, visual = purple, replace = red. */
+const VIM_MODE_CLASS: Record<string, string> = {
+  normal: "bg-primary/15 text-primary",
+  insert: "bg-verdict-ac/15 text-verdict-ac",
+  visual: "bg-verdict-re/15 text-verdict-re",
+  replace: "bg-verdict-wa/15 text-verdict-wa",
+};
+const PILL = "mr-2 inline-block rounded px-1.5 font-sans text-[0.625rem] leading-4 font-semibold tracking-wider";
+
+/** Attach monaco-vim while `enabled`; the status line (mode pill, `:` commands, pending keys) renders into `statusRef`. */
 function useVim(editor: CodeEditor | null, enabled: boolean, statusRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     if (!editor || !enabled || !statusRef.current) return;
     let disposed = false;
     let vim: { dispose(): void } | null = null;
-    void import("monaco-vim").then(({ initVimMode }) => {
-      if (!disposed) vim = initVimMode(editor, statusRef.current);
+    void import("monaco-vim").then(({ initVimMode, StatusBar }) => {
+      if (disposed) return;
+      // Render the mode as a coloured pill instead of "--NORMAL--" text.
+      class ColoredStatusBar extends StatusBar {
+        setMode(ev: { mode: string; subMode?: string }) {
+          const label =
+            ev.mode === "visual"
+              ? ev.subMode === "linewise"
+                ? "VISUAL LINE"
+                : ev.subMode === "blockwise"
+                  ? "VISUAL BLOCK"
+                  : "VISUAL"
+              : ev.mode.toUpperCase();
+          const node = (this as unknown as { modeInfoNode: HTMLElement }).modeInfoNode;
+          node.textContent = label;
+          node.className = cn(PILL, VIM_MODE_CLASS[ev.mode] ?? VIM_MODE_CLASS.normal);
+        }
+      }
+      vim = initVimMode(editor, statusRef.current, ColoredStatusBar);
     });
     return () => {
       disposed = true;
@@ -113,11 +150,55 @@ function useVim(editor: CodeEditor | null, enabled: boolean, statusRef: React.Re
   }, [editor, enabled, statusRef]);
 }
 
+const EDITING_MODES = [
+  { id: "default", label: "Default", description: "Standard editor keys" },
+  { id: "vim", label: "Vim", description: "Modal editing" },
+] as const;
+
+/** Right end of the tab bar: pick the editing mode (same setting as Settings → Editor → Vim mode). */
+function EditingModeMenu({ ctx }: { ctx: WebPluginContext }) {
+  const vim = ctx.settings.use("editor.vimMode");
+  const current = vim ? "vim" : "default";
+  return (
+    <DropdownMenu>
+      <Tooltip content="Editing mode">
+        <DropdownMenuTrigger asChild>
+          <button
+            className={cn(
+              "mb-0.5 flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-sm px-1.5 text-[0.6875rem] hover:bg-accent",
+              vim ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Keyboard className="size-3.5" />
+            {vim ? "Vim" : "Default"}
+            <ChevronDown className="size-3 opacity-60" />
+          </button>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Editing mode</DropdownMenuLabel>
+        {EDITING_MODES.map((m) => (
+          <DropdownMenuItem key={m.id} onSelect={() => ctx.settings.set("editor.vimMode", m.id === "vim")}>
+            <Check className={cn(current === m.id ? "opacity-100" : "opacity-0")} />
+            <div>
+              <div>{m.label}</div>
+              <div className="text-[0.625rem] text-muted-foreground">{m.description}</div>
+            </div>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => ctx.commands.execute("settings.open")}>Editor settings…</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function FileTabs({ ctx, files, activeFile }: { ctx: WebPluginContext; files: string[]; activeFile: string }) {
   const buffers = ctx.workspace.use((s) => s.buffers);
   const mainFile = ctx.workspace.use((s) => s.problem?.meta.mainFile);
   return (
-    <div className="flex shrink-0 items-end gap-px overflow-x-auto border-b px-1 pt-1">
+    <div className="flex shrink-0 items-end gap-1 border-b pt-1 pr-1">
+      <div className="flex min-w-0 flex-1 items-end gap-px overflow-x-auto pl-1">
       {files.map((f) => {
         const b = buffers[f];
         const dirty = b && b.content !== b.saved;
@@ -158,6 +239,8 @@ function FileTabs({ ctx, files, activeFile }: { ctx: WebPluginContext; files: st
           <Plus className="size-3.5" />
         </button>
       </Tooltip>
+      </div>
+      <EditingModeMenu ctx={ctx} />
     </div>
   );
 }
@@ -251,7 +334,7 @@ export function EditorPanel({ ctx }: PanelProps) {
           }}
         />
       </div>
-      {vimMode && <div ref={vimStatusRef} className="h-5 shrink-0 border-t px-2 font-mono text-[0.6875rem] leading-5 text-muted-foreground [&_input]:bg-transparent [&_input]:outline-none" />}
+      {vimMode && <div ref={vimStatusRef} className="h-6 shrink-0 border-t px-2 font-mono text-[0.6875rem] leading-6 text-muted-foreground [&_input]:bg-transparent [&_input]:text-foreground [&_input]:outline-none" />}
     </div>
   );
 }
