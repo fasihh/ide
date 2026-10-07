@@ -60,7 +60,7 @@ export function TopBar() {
   return (
     <header className="flex h-10 shrink-0 items-center gap-3 px-3">
       <div className="flex items-center gap-2">
-        <div className="flex size-5 items-center justify-center rounded bg-primary font-mono text-[10px] font-bold text-primary-foreground">
+        <div className="flex size-5 items-center justify-center rounded bg-primary font-mono text-[0.625rem] font-bold text-primary-foreground">
           cp
         </div>
         {problem ? (

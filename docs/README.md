@@ -3,7 +3,8 @@
 | Doc | Read it for |
 |---|---|
 | [PLAN.md](PLAN.md) | Vision, goals, stack and the phase checklist (what is done / next) |
-| [PROGRESS.md](PROGRESS.md) | Dated log of completed work, verification notes, known issues |
+| [PROGRESS.md](PROGRESS.md) | Dated log of completed work and verification notes |
+| [LIMITATIONS.md](LIMITATIONS.md) | Known limitations and issues, with planned fixes |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How the pieces fit: packages, data model, API, run flow, web shell |
 | [PLUGINS.md](PLUGINS.md) | How to build a tool (web and/or server plugin) and the full `ctx` API |
 

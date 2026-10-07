@@ -105,7 +105,7 @@ export function ProblemPanel({ ctx }: PanelProps) {
           onBlur={() => notes !== (meta.notes ?? "") && update({ notes })}
         />
       </div>
-      <div className="font-mono text-[10px] break-all text-muted-foreground">{problem.id}</div>
+      <div className="font-mono text-[0.625rem] break-all text-muted-foreground">{problem.id}</div>
     </div>
   );
 }

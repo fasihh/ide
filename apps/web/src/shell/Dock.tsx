@@ -59,7 +59,7 @@ const components = { [PANEL_COMPONENT]: PluginPanel };
 export function Dock() {
   const resolved = useTheme((s) => s.resolved);
   return (
-    <div className={`h-full ${resolved === "dark" ? "dockview-theme-dark" : "dockview-theme-light"}`}>
+    <div className={`relative h-full overflow-hidden ${resolved === "dark" ? "dockview-theme-dark" : "dockview-theme-light"}`}>
       <DockviewReact
         theme={theme}
         components={components}

@@ -118,7 +118,7 @@ export function EditorPanel({ ctx }: PanelProps) {
                 key={f}
                 onClick={() => ctx.workspace.setActiveFile(f)}
                 className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-t px-2.5 py-1 font-mono text-[11px]",
+                  "flex cursor-pointer items-center gap-1.5 rounded-t px-2.5 py-1 font-mono text-[0.6875rem]",
                   f === activeFile ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >

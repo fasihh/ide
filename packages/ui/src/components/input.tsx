@@ -34,7 +34,7 @@ export function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
       className={cn(
-        "pointer-events-none inline-flex h-4 items-center rounded border bg-muted px-1 font-mono text-[10px] text-muted-foreground",
+        "pointer-events-none inline-flex h-4 items-center rounded border bg-muted px-1 font-mono text-[0.625rem] text-muted-foreground",
         className,
       )}
       {...props}

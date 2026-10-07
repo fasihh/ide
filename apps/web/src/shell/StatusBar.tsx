@@ -4,7 +4,7 @@ export function StatusBar() {
   const items = useRegistry((s) => s.statusBar);
   const sorted = [...items].sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
   return (
-    <footer className="flex h-6 shrink-0 items-center gap-3 px-3 text-[11px] text-muted-foreground">
+    <footer className="flex h-6 shrink-0 items-center gap-3 px-3 text-[0.6875rem] text-muted-foreground">
       {sorted
         .filter((i) => i.align === "left")
         .map((i) => (

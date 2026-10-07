@@ -23,7 +23,7 @@ export function Tooltip({
         <TooltipPrimitive.Content
           side={side}
           sideOffset={4}
-          className={cn("z-50 rounded-md bg-foreground px-2 py-1 text-[11px] text-background shadow-md", className)}
+          className={cn("z-50 rounded-md bg-foreground px-2 py-1 text-[0.6875rem] text-background shadow-md", className)}
         >
           {content}
         </TooltipPrimitive.Content>

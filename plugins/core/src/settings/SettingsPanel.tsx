@@ -57,10 +57,10 @@ function PluginsControl({ ctx, value, onCommit }: { ctx: WebPluginContext; value
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-xs font-medium">
               {p.name}
-              <span className="font-mono text-[10px] font-normal text-muted-foreground">{p.id}</span>
-              {p.hasServer && <span className="rounded bg-muted px-1 text-[10px] font-normal text-muted-foreground">server</span>}
+              <span className="font-mono text-[0.625rem] font-normal text-muted-foreground">{p.id}</span>
+              {p.hasServer && <span className="rounded bg-muted px-1 text-[0.625rem] font-normal text-muted-foreground">server</span>}
             </div>
-            {p.description && <div className="truncate text-[11px] text-muted-foreground">{p.description}</div>}
+            {p.description && <div className="truncate text-[0.6875rem] text-muted-foreground">{p.description}</div>}
           </div>
           <Switch
             checked={!value.includes(p.id)}
@@ -73,7 +73,7 @@ function PluginsControl({ ctx, value, onCommit }: { ctx: WebPluginContext; value
         </div>
       ))}
       {changed && (
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[0.6875rem] text-muted-foreground">
           Reload to apply plugin changes.
           <Button size="sm" variant="outline" onClick={() => location.reload()}>
             Reload
@@ -149,7 +149,7 @@ export function SettingsPanel({ ctx }: PanelProps) {
             <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input className="pl-7" placeholder="Search settings" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <span className="truncate text-[11px] text-muted-foreground">Saved to ~/.cp-ide/settings.json</span>
+          <span className="truncate text-[0.6875rem] text-muted-foreground">Saved to ~/.cp-ide/settings.json</span>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl space-y-6 px-4 py-4">
@@ -167,7 +167,7 @@ export function SettingsPanel({ ctx }: PanelProps) {
                           <div className="flex items-center gap-2 text-xs font-medium">
                             {modified && <span className="size-1.5 rounded-full bg-primary" title="Modified" />}
                             {d.label}
-                            <span className="font-mono text-[10px] font-normal text-muted-foreground">{k}</span>
+                            <span className="font-mono text-[0.625rem] font-normal text-muted-foreground">{k}</span>
                             {modified && (
                               <Tooltip content="Reset to default">
                                 <button className="cursor-pointer text-muted-foreground hover:text-foreground" onClick={() => ctx.settings.update({ [k]: null })}>
@@ -176,7 +176,7 @@ export function SettingsPanel({ ctx }: PanelProps) {
                               </Tooltip>
                             )}
                           </div>
-                          {d.description && <div className="mt-0.5 text-[11px] text-muted-foreground">{d.description}</div>}
+                          {d.description && <div className="mt-0.5 text-[0.6875rem] text-muted-foreground">{d.description}</div>}
                         </div>
                         <div className={cn(wide && "w-full")}>
                           <Control ctx={ctx} k={k} d={d} value={value} update={(v) => void ctx.settings.update({ [k]: v }).catch(() => {})} />

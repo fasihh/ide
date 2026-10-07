@@ -34,7 +34,7 @@ function StatusBadge({ state }: { state: TestRunState | undefined }) {
 function FieldLabel({ children, actions }: { children: React.ReactNode; actions?: React.ReactNode }) {
   return (
     <div className="flex h-5 items-center justify-between">
-      <span className="text-[11px] font-medium text-muted-foreground">{children}</span>
+      <span className="text-[0.6875rem] font-medium text-muted-foreground">{children}</span>
       {actions}
     </div>
   );
@@ -57,7 +57,7 @@ function OutputView({ result, expected }: { result: ExecResult; expected: string
         ))
       )}
       {result.verdict === "WA" && result.diff && (
-        <div className="mt-1 border-t px-2 pt-1 text-[11px] text-verdict-wa">
+        <div className="mt-1 border-t px-2 pt-1 text-[0.6875rem] text-verdict-wa">
           {result.diff.actualToken === null
             ? `Output ended early; expected "${result.diff.expectedToken}" (line ${result.diff.expectedLine})`
             : result.diff.expectedToken === null
@@ -66,7 +66,7 @@ function OutputView({ result, expected }: { result: ExecResult; expected: string
         </div>
       )}
       {expected === "" && result.verdict === "RAN" && (
-        <div className="mt-1 border-t px-2 pt-1 text-[11px] text-muted-foreground">No expected output to compare against.</div>
+        <div className="mt-1 border-t px-2 pt-1 text-[0.6875rem] text-muted-foreground">No expected output to compare against.</div>
       )}
     </div>
   );
@@ -83,9 +83,9 @@ function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: Te
         <button className="flex flex-1 cursor-pointer items-center gap-1.5 text-left" onClick={() => setOpen(!open)}>
           {open ? <ChevronDown className="size-3.5 text-muted-foreground" /> : <ChevronRight className="size-3.5 text-muted-foreground" />}
           <span className="text-xs font-medium">Test {index + 1}</span>
-          {test.isSample && <span className="text-[10px] text-muted-foreground">sample</span>}
+          {test.isSample && <span className="text-[0.625rem] text-muted-foreground">sample</span>}
           <StatusBadge state={state} />
-          {result && result.verdict !== "CE" && <span className="font-mono text-[10px] text-muted-foreground">{result.timeMs} ms</span>}
+          {result && result.verdict !== "CE" && <span className="font-mono text-[0.625rem] text-muted-foreground">{result.timeMs} ms</span>}
         </button>
         <div className="flex items-center opacity-60 transition-opacity group-hover:opacity-100">
           <Tooltip content="Run this test">
@@ -126,7 +126,7 @@ function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: Te
                 actions={
                   result.stdout && (
                     <button
-                      className="flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                      className="flex cursor-pointer items-center gap-1 text-[0.625rem] text-muted-foreground hover:text-foreground"
                       onClick={() => ctx.workspace.updateTest(test.id, { expected: result.stdout.replace(/\r\n/g, "\n") })}
                     >
                       <Copy className="size-3" /> use as expected
@@ -139,7 +139,7 @@ function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: Te
               <OutputView result={result} expected={test.expected} />
             </div>
           )}
-          {result?.message && result.verdict !== "WA" && <div className="text-[11px] text-verdict-re">{result.message}</div>}
+          {result?.message && result.verdict !== "WA" && <div className="text-[0.6875rem] text-verdict-re">{result.message}</div>}
           {result?.stderr && (
             <div>
               <FieldLabel>stderr</FieldLabel>

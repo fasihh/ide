@@ -63,7 +63,7 @@ export default definePlugin({
             </div>
           ))}
           {info && (
-            <div className="space-y-0.5 font-mono text-[11px] text-muted-foreground">
+            <div className="space-y-0.5 font-mono text-[0.6875rem] text-muted-foreground">
               <div>platform: {info.platform}</div>
               <div>node: {info.node}</div>
               <div>problems: {info.problemsRoot}</div>

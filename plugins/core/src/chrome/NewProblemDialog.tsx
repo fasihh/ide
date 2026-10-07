@@ -4,6 +4,7 @@ import type { PanelProps } from "@cp-ide/plugin-api/web";
 import type { Language } from "@cp-ide/shared";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -76,21 +77,17 @@ export function NewProblemDialog({ ctx }: PanelProps) {
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="np-platform">Platform</Label>
-              <Input id="np-platform" list="np-platforms" value={form.platform} onChange={set("platform")} />
-              <datalist id="np-platforms">
-                {platforms.map((p) => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
+              <Combobox id="np-platform" value={form.platform} options={platforms} onChange={(platform) => setForm((f) => ({ ...f, platform }))} />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="np-group">Contest / group</Label>
-              <Input id="np-group" list="np-groups" placeholder="Round 945 (Div. 2)" value={form.group} onChange={set("group")} />
-              <datalist id="np-groups">
-                {groups.map((g) => (
-                  <option key={g} value={g} />
-                ))}
-              </datalist>
+              <Combobox
+                id="np-group"
+                placeholder="Round 945 (Div. 2)"
+                value={form.group}
+                options={groups}
+                onChange={(group) => setForm((f) => ({ ...f, group }))}
+              />
             </div>
           </div>
           <div className="grid gap-1.5">

@@ -51,7 +51,7 @@ export function DropdownMenuCheckboxItem({
 }
 
 export function DropdownMenuLabel({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Label>) {
-  return <DropdownMenuPrimitive.Label className={cn("px-2 py-1 text-[11px] font-medium text-muted-foreground", className)} {...props} />;
+  return <DropdownMenuPrimitive.Label className={cn("px-2 py-1 text-[0.6875rem] font-medium text-muted-foreground", className)} {...props} />;
 }
 
 export function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
@@ -59,5 +59,5 @@ export function DropdownMenuSeparator({ className, ...props }: React.ComponentPr
 }
 
 export function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<"span">) {
-  return <span className={cn("ml-auto pl-4 font-mono text-[10px] tracking-wide text-muted-foreground", className)} {...props} />;
+  return <span className={cn("ml-auto pl-4 font-mono text-[0.625rem] tracking-wide text-muted-foreground", className)} {...props} />;
 }

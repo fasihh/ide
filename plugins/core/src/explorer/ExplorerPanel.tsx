@@ -46,7 +46,7 @@ function Row({
     >
       {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
       <span className="truncate font-medium">{label}</span>
-      <span className="ml-auto text-[10px] text-muted-foreground">{count}</span>
+      <span className="ml-auto text-[0.625rem] text-muted-foreground">{count}</span>
     </button>
   );
 }
@@ -123,7 +123,7 @@ export function ExplorerPanel({ ctx }: PanelProps) {
                           >
                             <span className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[p.status])} />
                             <span className="truncate">{p.name}</span>
-                            <span className="ml-auto text-[10px] text-muted-foreground uppercase">{p.language === "cpp" ? "c++" : "py"}</span>
+                            <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase">{p.language === "cpp" ? "c++" : "py"}</span>
                           </button>
                         ))}
                     </div>

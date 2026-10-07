@@ -21,8 +21,8 @@
   --dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
   --dv-separator-border: transparent;
   --dv-paneview-header-border-color: var(--border);
-  --dv-tabs-and-actions-container-height: 32px;
-  --dv-tabs-and-actions-container-font-size: 12px;
+  --dv-tabs-and-actions-container-height: 2rem;
+  --dv-tabs-and-actions-container-font-size: 0.75rem;
   --dv-sash-color: transparent;
   --dv-active-sash-color: color-mix(in oklab, var(--primary) 60%, transparent);
   --dv-drag-over-background-color: color-mix(in oklab, var(--primary) 18%, transparent);
@@ -44,7 +44,7 @@
 }
 
 .dockview-theme-cp .dv-tab {
-  padding: 0 10px;
+  padding: 0 0.625rem;
 }
 
 .dockview-theme-cp .dv-tab.dv-active-tab {

@@ -7,3 +7,4 @@ export * from "./components/select.tsx";
 export * from "./components/dropdown-menu.tsx";
 export * from "./components/dialog.tsx";
 export * from "./components/tooltip.tsx";
+export * from "./components/combobox.tsx";

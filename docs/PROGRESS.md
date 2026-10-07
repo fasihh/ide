@@ -3,6 +3,17 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-07 — Bug fixes after first use
+
+- Page could scroll: dockview parks hidden "always rendered" panels below the viewport. The shell
+  (`html/body/#root`) and the dock container now clip overflow.
+- New Problem → Platform/Group used `<datalist>`, which only lists options matching the current
+  text. Replaced with a `Combobox` (`packages/ui`) that shows all options and filters while typing.
+- UI font size only changed body text spacing because components size text in rem. The setting now
+  sets the root font size (`uiFontSize × 16/12`), so text, controls and spacing scale together; fixed
+  `text-[10px]/[11px]` classes became rem. Default is now 12 (= previous look).
+- Added `docs/LIMITATIONS.md`; Competitive Companion moved to the last phase.
+
 ## 2026-10-07 — Phase 1 complete
 
 **Built**
@@ -22,13 +33,6 @@ left. Phase checklists live in [PLAN.md](PLAN.md).
 - Close panel / reopen via shortcut (Ctrl+J), View menu, Reset layout; toolchain panel via plugin RPC.
 - `pnpm start` production build served by the Hono server (SPA fallback works).
 
-**Known issues / limitations**
-- A layout saved at one window size is restored proportionally at another; View → Reset layout fixes it.
-- No memory limit; times are wall clock including process start.
-- Plugin enable/disable requires a reload (no hot deactivation yet).
-- Monaco has syntax highlighting + word completion only (no C++ IntelliSense).
-- In dev, Vite sometimes re-optimizes deps after a dependency change → reload the page once.
-- Windows: adding `~/.cp-ide/cache` to Defender exclusions makes first runs faster.
+**Known issues / limitations** — moved to [LIMITATIONS.md](LIMITATIONS.md).
 
-**Next up** — Phase 2 (command palette, layout presets, extra files, keybinding overrides), then
-Phase 4 (Competitive Companion) since importing problems is the biggest daily time saver.
+**Next up** — Phase 2. Competitive Companion was moved to the final phase.

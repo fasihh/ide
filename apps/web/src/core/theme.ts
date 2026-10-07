@@ -11,7 +11,9 @@ function apply() {
   const root = document.documentElement;
   root.classList.toggle("dark", resolved === "dark");
   root.style.colorScheme = resolved;
-  root.style.setProperty("--ui-font-size", `${getSetting("appearance.uiFontSize")}px`);
+  // The UI is sized in rem with regular text at 0.75rem, so scale the root font size such that
+  // regular text equals the setting; spacing and controls scale along with it.
+  root.style.fontSize = `${(getSetting("appearance.uiFontSize") * 16) / 12}px`;
   root.style.setProperty("--editor-font", getSetting("editor.fontFamily"));
   if (useTheme.getState().resolved !== resolved) useTheme.setState({ resolved });
 }

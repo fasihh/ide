@@ -92,10 +92,10 @@ export const coreSettings = defineSettings({
   "appearance.uiFontSize": {
     section: "Appearance",
     label: "UI font size",
-    description: "Base font size (px) for panels and controls.",
+    description: "Size (px) of regular UI text. Panels, controls and spacing scale with it. The editor has its own font size.",
     type: "number",
-    default: 13,
-    min: 10,
+    default: 12,
+    min: 9,
     max: 20,
   },
 
