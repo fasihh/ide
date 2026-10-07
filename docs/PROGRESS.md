@@ -3,6 +3,26 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-07 — Command palette module
+
+- New `plugins/palette` replaces the palette that lived in the core plugin (`chrome/palette.ts` →
+  only layout helpers remain, now `chrome/layouts.ts`). Command ids `workbench.quickOpen` (Ctrl+P) and
+  `workbench.commandPalette` (Ctrl+Shift+P) are kept so user keybinding overrides still apply; new
+  `palette.panels` (Ctrl+Alt+P), `palette.layouts`, `palette.gotoLine` (Ctrl+G).
+- Plugin API: `ctx.overlays.register`, `ctx.services.provide/get`, `ctx.panels.isOpen`.
+  `fuzzyMatch` moved to `@cp-ide/shared` so plugins can use it.
+- The palette plugin's package exports its types (`@cp-ide/plugin-palette`) for consumers of the
+  `palette` service.
+- Verified in the browser: default mode (files + problems), `#` panels (opened Toolchain), `>` commands
+  (ran "Mark as solved"), `:15:5` go to line, top-bar search box.
+
+**Incident & guard** — a leftover `tsx watch` test server outlived its deleted temp `CP_IDE_HOME`,
+restarted with default settings and wrote three test problems into the real `~/cp`. They were moved
+to `~/cp/.trash` (`1791393167005-a-watermelon`, `1791393167157-b-two-arrays`,
+`1791393167310-weird-algorithm`). The server now refuses to start when `CP_IDE_HOME` points to a
+missing folder, and CLAUDE.md tells agents to run test servers with `start` (no watcher) and to
+assert the problems root before writing.
+
 ## 2026-10-07 — Phase 3 complete
 
 **Server**

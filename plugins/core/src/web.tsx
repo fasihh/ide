@@ -10,7 +10,7 @@ import { SettingsPanel } from "./settings/SettingsPanel.tsx";
 import { KeybindingsPanel } from "./settings/KeybindingsPanel.tsx";
 import { openNewProblemDialog } from "./chrome/NewProblemDialog.tsx";
 import { LanguageStatus, NewMenu, RootStatus, RunButton, SaveStatus, TestsStatus } from "./chrome/items.tsx";
-import { applyLayout, commandPalette, deleteLayout, quickOpen, saveLayout } from "./chrome/palette.ts";
+import { applyLayout, deleteLayout, saveLayout } from "./chrome/layouts.ts";
 import { copyPath, deleteProblem, moveProblem, renameProblem } from "./explorer/actions.ts";
 import { LibraryPanel } from "./library/LibraryPanel.tsx";
 import { insertText, pickSnippet, registerSnippetCompletions } from "./library/snippets.ts";
@@ -69,8 +69,6 @@ export default definePlugin({
     ctx.commands.register({ id: "layout.reset", title: "Reset layout", category: "Layout", run: () => ctx.layout.reset() });
 
     // ---- workbench ----
-    ctx.commands.register({ id: "workbench.commandPalette", title: "Command palette", category: "View", keybinding: "ctrl+shift+p", run: () => commandPalette(ctx) });
-    ctx.commands.register({ id: "workbench.quickOpen", title: "Go to problem…", category: "File", keybinding: "ctrl+p", run: () => quickOpen(ctx) });
     ctx.commands.register({ id: "settings.open", title: "Open settings", category: "Preferences", keybinding: "ctrl+,", run: () => ctx.panels.open("core.settings") });
     ctx.commands.register({ id: "keybindings.open", title: "Keyboard shortcuts", category: "Preferences", keybinding: "ctrl+alt+k", run: () => ctx.panels.open("core.keybindings") });
 

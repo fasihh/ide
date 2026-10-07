@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, cn } from "@cp-ide/ui";
-import { fuzzyMatch } from "../core/fuzzy.ts";
+import { fuzzyMatch } from "@cp-ide/shared";
 import { type UiRequest, closeUi, useUiRequest } from "../core/ui.ts";
 
 function Highlight({ text, indices }: { text: string; indices: number[] }) {

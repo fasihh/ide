@@ -55,12 +55,14 @@ export default definePlugin({
 | `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta(patch, id?)`, `renameProblem`/`moveProblem`/`deleteProblem`/`restoreProblem`, `setBuffer`, `save`, `createFile`/`renameFile`/`deleteFile`, `addTest`/`updateTest`/`removeTest`/`duplicateTest`/`moveTest` |
 | `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()`, `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
-| `panels` | `register`, `open`, `close`, `toggle`, `useIsOpen`, `list` |
+| `panels` | `register`, `open`, `close`, `toggle`, `isOpen`, `useIsOpen`, `list` |
 | `commands` | `register` (with optional `keybinding`), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
 | `layout` | `registerPreset({ id, name, panels })`, `applyPreset`, `listPresets`, `saveCurrent(name)`, `deleteSaved`, `reset` |
 | `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive })` — all promise-based |
 | `library` | templates & snippets: `list(kind)`, `use(kind)` (hook), `save`, `create`, `rename`, `remove` |
 | `toolbar` / `statusBar` | `register({ id, order, component })` (status bar also takes `align`) |
+| `overlays` | `register({ id, component })` — rendered at the app root (palettes, dialogs, HUDs) |
+| `services` | `provide(name, obj)` / `get<T>(name)` — share an API with other plugins |
 | `events` | `on`/`emit` for `CoreEvents` (augmentable) |
 | `notify` | toasts, optionally with an action button: `notify.success(msg, desc, { label: "Undo", run })` |
 | `theme` | resolved `"dark" \| "light"` (`get`/`use`) |
@@ -93,6 +95,34 @@ declare module "@cp-ide/plugin-api/web" {
 }
 ctx.events.emit("stress:found", { input });
 ```
+
+### Adding a palette mode
+
+The palette plugin provides a `palette` service. Import its types and register a provider:
+
+```ts
+import type { PaletteService } from "@cp-ide/plugin-palette";
+
+ctx.services.get<PaletteService>("palette")?.registerProvider({
+  id: "tags",
+  prefix: "@",            // type "@" in the palette to enter this mode ("" = default mode section)
+  title: "Problems by tag",
+  provide: (query) =>
+    ctx.workspace.get().problems.map((p) => ({
+      id: p.id,
+      label: p.name,
+      description: p.tags.join(", "),
+      keywords: p.tags.join(" "),
+      run: () => ctx.workspace.openProblem(p.id),
+    })),
+});
+```
+
+Items are fuzzy-filtered by `label` (then `description`/`keywords`) unless the provider sets
+`filter: false`. An item's `run(palette)` can call `palette.setQuery(...)` with `keepOpen: true` to
+chain modes. Add `"@cp-ide/plugin-palette": "workspace:*"` to your plugin's dependencies for the types.
+Plugins activate in order (required first, then by id), so look the service up inside `activate` of a
+plugin whose id sorts after `palette`, or lazily when needed.
 
 ### Settings
 

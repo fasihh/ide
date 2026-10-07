@@ -217,6 +217,21 @@ export interface UiItemContribution {
   component: ComponentType<PanelProps>;
 }
 
+/** A component rendered at the app root, above the layout (palettes, dialogs, HUDs). */
+export interface OverlayContribution {
+  id: string;
+  component: ComponentType<PanelProps>;
+}
+
+/**
+ * Plugin-to-plugin services. A plugin provides an object under a name; others look it up.
+ * Export the service's type from the providing plugin so consumers can type `get<T>()`.
+ */
+export interface ServicesApi {
+  provide<T extends object>(name: string, service: T): Disposable;
+  get<T extends object>(name: string): T | undefined;
+}
+
 export interface StatusBarContribution extends UiItemContribution {
   align: "left" | "right";
 }
@@ -247,7 +262,9 @@ export interface PanelsApi {
   open(id: string): void;
   close(id: string): void;
   toggle(id: string): void;
-  /** React hook: whether a panel is currently open in the layout. */
+  /** Whether a panel is currently open in the layout. */
+  isOpen(id: string): boolean;
+  /** React hook version of `isOpen`. */
   useIsOpen(id: string): boolean;
   list(): PanelContribution[];
 }
@@ -332,6 +349,8 @@ export interface WebPluginContext {
   readonly panels: PanelsApi;
   readonly statusBar: { register(item: StatusBarContribution): Disposable };
   readonly toolbar: { register(item: UiItemContribution): Disposable };
+  readonly overlays: { register(overlay: OverlayContribution): Disposable };
+  readonly services: ServicesApi;
   readonly events: EventsApi;
   readonly layout: LayoutApi;
   readonly library: LibraryApi;

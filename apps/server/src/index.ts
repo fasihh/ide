@@ -11,6 +11,13 @@ import { createServices } from "./services/index.ts";
 
 const PORT = Number(process.env.PORT ?? 7420);
 
+// An explicit data folder that doesn't exist is almost certainly a mistake (e.g. a deleted test
+// folder); refuse to start rather than silently falling back to defaults and the real ~/cp.
+if (process.env.CP_IDE_HOME && !fs.existsSync(process.env.CP_IDE_HOME)) {
+  console.error(`CP_IDE_HOME=${process.env.CP_IDE_HOME} does not exist. Create it or unset CP_IDE_HOME.`);
+  process.exit(1);
+}
+
 const services = await createServices();
 const host = new ServerPluginHost(services);
 const api = createApi(services, () => host.infos);

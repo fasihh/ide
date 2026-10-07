@@ -13,7 +13,7 @@ import { layout, useLayout } from "./layout.ts";
 import { uiApi } from "./ui.ts";
 import { libraryApi } from "./library.ts";
 import { notify } from "./notify.ts";
-import { events, registry } from "./registry.ts";
+import { events, registry, serviceRegistry } from "./registry.ts";
 import { runnerApi } from "./runner.ts";
 import { getSetting, readSetting, updateSettings, useSetting, useSettings, useSettingsSchema } from "./settings.ts";
 import { themeApi } from "./theme.ts";
@@ -68,11 +68,17 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
       open: layout.open,
       close: layout.close,
       toggle: layout.toggle,
+      isOpen: (id) => useLayout.getState().open.includes(id),
       useIsOpen: (id) => useLayout((s) => s.open.includes(id)),
       list: () => registry.panelsList(),
     },
     statusBar: { register: (item) => disposables.add(registry.addStatusBarItem({ ...item, owner: ctx })) },
     toolbar: { register: (item) => disposables.add(registry.addToolbarItem({ ...item, owner: ctx })) },
+    overlays: { register: (overlay) => disposables.add(registry.addOverlay({ ...overlay, owner: ctx })) },
+    services: {
+      provide: (name, service) => disposables.add(serviceRegistry.provide(name, service)),
+      get: <T extends object>(name: string) => serviceRegistry.get(name) as T | undefined,
+    },
     events: {
       on: (event, handler) => disposables.add(events.on(event, handler)),
       emit: (event, payload) => events.emit(event, payload),

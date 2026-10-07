@@ -1,0 +1,23 @@
+{
+  "name": "@cp-ide/plugin-palette",
+  "private": true,
+  "type": "module",
+  "description": "Command palette: problems, files, commands, panels, layouts, go to line.",
+  "exports": {
+    ".": "./src/types.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/shared": "workspace:*",
+    "@cp-ide/ui": "workspace:*",
+    "lucide-react": "^1.52.0",
+    "react": "^19.3.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "^19"
+  }
+}

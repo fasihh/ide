@@ -80,6 +80,15 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
   autocomplete
 - ✅ Per-problem output comparison mode and float tolerance
 
+## Phase 3.5 — Command palette module ✅
+
+- ✅ `plugins/palette`: one palette with modes — no prefix: problems + files of the open problem,
+  `>` commands (recently used first), `#` panels (open/focus/close any panel), `!` layouts,
+  `:` go to line, `?` help
+- ✅ Top-bar search box ("Search problems, panels, commands…") as the visible entry point
+- ✅ Extensible: other plugins add modes through the `palette` service (`PaletteService.registerProvider`)
+- ✅ Plugin API: `ctx.overlays` (app-root components) and `ctx.services` (plugin-to-plugin services)
+
 ## Phase 4 — Power tools (each a plugin) ⬜
 
 - ⬜ Stress tester: generator + brute + solution in a loop until outputs differ; save the failing case as a test

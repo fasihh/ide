@@ -36,6 +36,7 @@
 | `plugins/core` | All built-in tools (explorer, editor, tests, output, problem, settings, toolbar/status items) |
 | `plugins/toolchain` | Example full-stack plugin (server route + panel + contributed setting) |
 | `plugins/format` | Formatter: server route running clang-format / black, format command, format on save |
+| `plugins/palette` | Command palette (modes by prefix), top-bar search box, `palette` service for other plugins |
 
 Internal packages export TypeScript source directly (no build step); Vite and tsx compile them.
 Imports use explicit `.ts` extensions (`allowImportingTsExtensions`).
