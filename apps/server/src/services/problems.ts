@@ -128,6 +128,7 @@ export class ProblemsService implements ProblemsApi {
       mainFile,
       timeLimitMs: input.timeLimitMs,
       memoryLimitMb: input.memoryLimitMb,
+      runMode: input.runMode,
       status: "todo",
       tags: [],
       createdAt: now(),

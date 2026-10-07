@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { ExternalLink, FolderInput, Pencil, Trash2 } from "lucide-react";
 import type { PanelProps } from "@cp-ide/plugin-api/web";
 import type { CompareMode, Language, ProblemMetaPatch, ProblemStatus } from "@cp-ide/shared";
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea, cn } from "@cp-ide/ui";
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, cn } from "@cp-ide/ui";
 import { deleteProblem, moveProblem, renameProblem } from "../explorer/actions.ts";
+import { ModeSegmented } from "./ModeControl.tsx";
 
 /** Text input that commits on blur / Enter instead of on every keystroke. */
 function CommitInput({
@@ -62,16 +63,19 @@ export function ProblemPanel({ ctx }: PanelProps) {
         <CommitInput placeholder="https://…" value={meta.url ?? ""} onCommit={(url) => update({ url: url.trim() || undefined })} />
       </div>
       <div className="space-y-2 rounded-md border p-2.5">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <Label>Interactive problem</Label>
-            <div className="mt-0.5 text-[0.6875rem] text-muted-foreground">
-              Tests talk to an interactor (your judge program) instead of comparing output.
-            </div>
+        <div>
+          <Label>Mode</Label>
+          <div className="mt-1.5">
+            <ModeSegmented ctx={ctx} meta={meta} />
           </div>
-          <Switch checked={!!meta.interactive} onCheckedChange={(on) => update({ interactive: on })} />
         </div>
-        {meta.interactive && (
+        {meta.runMode === "playground" && (
+          <div className="text-[0.625rem] leading-relaxed text-muted-foreground">
+            Run (top bar / Ctrl+Enter) executes the main file in the Terminal panel, where you type input live. The tests stay
+            available via “Run all” in the Tests panel.
+          </div>
+        )}
+        {meta.interactive && meta.runMode !== "playground" && (
           <div className="grid gap-1.5">
             <Label>Interactor</Label>
             <Select value={meta.interactor ?? "interactor.cpp"} onValueChange={(v) => update({ interactor: v })}>

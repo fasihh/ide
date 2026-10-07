@@ -12,6 +12,7 @@ import { formatKeybinding, listCommands, recordKeybinding, setKeybinding, useCom
 import { layout, useLayout } from "./layout.ts";
 import { uiApi } from "./ui.ts";
 import { libraryApi } from "./library.ts";
+import { runApi } from "./run.ts";
 import { notify } from "./notify.ts";
 import { events, registry, serviceRegistry } from "./registry.ts";
 import { runnerApi } from "./runner.ts";
@@ -69,6 +70,8 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
       close: layout.close,
       toggle: layout.toggle,
       isOpen: (id) => useLayout.getState().open.includes(id),
+      active: () => useLayout.getState().active,
+      useActive: () => useLayout((s) => s.active),
       useIsOpen: (id) => useLayout((s) => s.open.includes(id)),
       list: () => registry.panelsList(),
     },
@@ -94,6 +97,10 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
       reset: layout.reset,
     },
     library: libraryApi,
+    run: {
+      ...runApi,
+      register: (target) => disposables.add(runApi.register(target)),
+    },
     ui: uiApi,
     notify,
     theme: themeApi,

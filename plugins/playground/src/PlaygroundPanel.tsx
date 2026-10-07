@@ -1,4 +1,4 @@
-import { Download, FileInput, Loader2, MoreHorizontal, Pencil, Play, Plus, Save, Square, Trash2 } from "lucide-react";
+import { Download, FileInput, Loader2, MoreHorizontal, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
 import { CodeEditor } from "@cp-ide/editor";
 import { libraryNameSchema } from "@cp-ide/shared";
@@ -10,7 +10,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Kbd,
   Tooltip,
   cn,
 } from "@cp-ide/ui";
@@ -24,7 +23,6 @@ import {
   saveFile,
   setActive,
   setContent,
-  stopRun,
   usePlayground,
 } from "./store.ts";
 
@@ -74,7 +72,8 @@ export async function saveAsProblem(ctx: WebPluginContext) {
   });
   if (!name?.trim()) return;
   try {
-    const problem = await ctx.workspace.createProblem({ name: name.trim(), platform: "custom", group: "playground", language: f.language });
+    // Starts in Playground mode: Run keeps running it in the terminal; tests can be added later.
+    const problem = await ctx.workspace.createProblem({ name: name.trim(), platform: "custom", group: "playground", language: f.language, runMode: "playground" });
     ctx.workspace.setBuffer(problem.meta.mainFile, f.content);
     await ctx.workspace.save(problem.meta.mainFile);
     ctx.panels.open("core.editor");
@@ -101,7 +100,7 @@ export function PlaygroundPanel({ ctx }: PanelProps) {
   const active = usePlayground((s) => s.active);
   const folder = usePlayground((s) => s.folder);
   const busy = usePlayground((s) => s.run.phase === "running" || s.run.phase === "compiling");
-  const runKey = ctx.commands.useList().find((c) => c.id === "playground.run")?.keybinding;
+  const runKey = ctx.commands.useList().find((c) => c.id === "run.primary")?.keybinding;
   const file = files.find((f) => f.name === active);
 
   if (!loaded) return <div className="p-4 text-xs text-muted-foreground">Loading playground…</div>;
@@ -138,20 +137,9 @@ export function PlaygroundPanel({ ctx }: PanelProps) {
           </Tooltip>
         </div>
         <div className="mb-0.5 flex shrink-0 items-center gap-1">
-          {busy ? (
-            <Button size="sm" variant="secondary" onClick={stopRun}>
-              <Square className="fill-current" /> Stop
-            </Button>
-          ) : (
-            <Button size="sm" disabled={!file} onClick={() => runPlayground(ctx)}>
-              <Play /> Run
-              {runKey && (
-                <Kbd className="hidden border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80 @[28rem]:inline-flex">
-                  {ctx.commands.formatKeybinding(runKey)}
-                </Kbd>
-              )}
-            </Button>
-          )}
+          <span className="hidden px-1 text-[0.625rem] text-muted-foreground @[30rem]:inline">
+            Run with the top bar{runKey ? ` or ${ctx.commands.formatKeybinding(runKey)}` : ""}
+          </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Playground actions" disabled={!file}>

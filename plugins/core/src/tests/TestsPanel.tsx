@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import {
   ArrowDown,
-  ArrowLeftRight,
   ArrowUp,
   ChevronDown,
   ChevronRight,
@@ -21,6 +20,7 @@ import {
 import type { PanelProps, TestRunState, WebPluginContext } from "@cp-ide/plugin-api/web";
 import type { ExecResult, TestCase } from "@cp-ide/shared";
 import { Transcript } from "./Transcript.tsx";
+import { ModeChip } from "../problem/ModeControl.tsx";
 import {
   Badge,
   Button,
@@ -283,18 +283,7 @@ export function TestsPanel({ ctx }: PanelProps) {
             </span>
           )}
         </span>
-        <Tooltip content={problem.meta.interactive ? "Interactive: tests run against the interactor (click to turn off)" : "Make this an interactive problem"}>
-          <button
-            onClick={() => ctx.workspace.updateMeta({ interactive: !problem.meta.interactive })}
-            className={cn(
-              "flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-[0.625rem] whitespace-nowrap",
-              problem.meta.interactive ? "bg-verdict-tle/15 text-verdict-tle" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
-          >
-            <ArrowLeftRight className="size-3" />
-            <span className="hidden @[24rem]:inline">{problem.meta.interactive ? "Interactive" : "Standard"}</span>
-          </button>
-        </Tooltip>
+        <ModeChip ctx={ctx} meta={problem.meta} />
         <div className="flex-1" />
         <Tooltip content={anyOpen ? "Collapse all" : "Expand all"}>
           <Button

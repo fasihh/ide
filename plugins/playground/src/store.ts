@@ -206,8 +206,12 @@ function handle(m: ServerMessage) {
   }
 }
 
+/** What the terminal last ran — decides what Run means while the Terminal panel is focused. */
+export let lastRunKind: "playground" | "problem" | null = null;
+
 /** Compile and run `source` in the terminal. */
-export function runSource(fileName: string, source: string) {
+export function runSource(fileName: string, source: string, kind: "playground" | "problem" = "playground") {
+  lastRunKind = kind;
   const language = fileName.endsWith(".py") ? "python" : "cpp";
   termClear();
   termWrite(ansi.dim(`▶ ${fileName}\r\n`));

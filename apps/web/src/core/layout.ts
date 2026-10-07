@@ -14,7 +14,7 @@ type Placement = NonNullable<PanelContribution["placement"]>;
 type Pinned = Partial<Record<"left" | "right" | "bottom", number>>;
 type SavedLayout = { id: string; name: string; json: SerializedDockview; pinned: Pinned };
 
-export const useLayout = create<{ open: string[]; presets: LayoutPreset[]; saved: SavedLayout[] }>(() => ({
+export const useLayout = create<{ open: string[]; active?: string; presets: LayoutPreset[]; saved: SavedLayout[] }>(() => ({
   open: [],
   presets: [],
   saved: readJson<SavedLayout[]>(SAVED_KEY) ?? [],
@@ -168,6 +168,7 @@ export const layout = {
     dock = api;
     api.onDidAddPanel(syncOpen);
     api.onDidRemovePanel(syncOpen);
+    api.onDidActivePanelChange((e) => useLayout.setState({ active: e.panel?.id }));
     api.onDidLayoutChange(() => {
       flushPendingSizes();
       rememberSizes();

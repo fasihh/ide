@@ -111,6 +111,10 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
 - ✅ Files saved (autosave + Ctrl+S) in `playground.folder` (default `~/.cp-ide/plugins/playground`);
   new / rename / delete, "Save as problem…", "Download file"
 - ✅ "Run problem in terminal" command for the open problem's main file
+- ✅ One context-aware Run (top bar / Ctrl+Enter) via run targets: playground file while the Playground
+  panel is active, problems in **Playground mode** in the terminal, tests otherwise
+- ✅ Per-problem mode: Standard / Interactive / Playground (Tests header chip, Problem panel, palette);
+  "Save as problem" creates Playground-mode problems
 - ✅ Platform: WebSocket endpoints for server plugins (`ctx.websocket`, local-origin check),
   `runner.start` live process sessions, keybinding `when` conditions (Ctrl+Enter / Ctrl+S act on the
   playground while it has focus), shared `@cp-ide/editor` package (`CodeEditor` with settings, theme, Vim)

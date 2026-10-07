@@ -13,6 +13,7 @@ import { LanguageStatus, NewMenu, RootStatus, RunButton, SaveStatus, TestsStatus
 import { applyLayout, deleteLayout, saveLayout } from "./chrome/layouts.ts";
 import { copyPath, deleteProblem, moveProblem, renameProblem } from "./explorer/actions.ts";
 import { LibraryPanel } from "./library/LibraryPanel.tsx";
+import { MODES, setMode } from "./problem/ModeControl.tsx";
 import { insertText, pickSnippet, registerSnippetCompletions, registerSnippetPaletteMode } from "./library/snippets.ts";
 
 /**
@@ -73,7 +74,18 @@ export default definePlugin({
     ctx.commands.register({ id: "keybindings.open", title: "Keyboard shortcuts", category: "Preferences", keybinding: "ctrl+alt+k", run: () => ctx.panels.open("core.keybindings") });
 
     // ---- run ----
-    ctx.commands.register({ id: "runner.runAll", title: "Run all tests", category: "Run", keybinding: "ctrl+enter", run: () => ctx.runner.run() });
+    ctx.commands.register({ id: "runner.runAll", title: "Run all tests", category: "Run", run: () => ctx.runner.run() });
+    // The top-bar Run button and Ctrl+Enter run the current target: tests by default; plugins add
+    // others (the playground file, problems in Playground mode, …).
+    ctx.commands.register({ id: "run.primary", title: "Run", category: "Run", keybinding: "ctrl+enter", run: () => ctx.run.runCurrent() });
+    ctx.run.register({
+      id: "core.tests",
+      label: "Run tests",
+      priority: 0,
+      applies: () => !!ctx.workspace.get().problem,
+      run: () => ctx.runner.run(),
+      useBusy: () => ctx.runner.use((s) => s.phase !== "idle"),
+    });
     ctx.commands.register({
       id: "runner.runCustom",
       title: "Run with custom input",
@@ -107,15 +119,9 @@ export default definePlugin({
       });
     }
 
-    ctx.commands.register({
-      id: "problems.toggleInteractive",
-      title: "Toggle interactive problem",
-      category: "Problem",
-      run: () => {
-        const p = ctx.workspace.get().problem;
-        if (p) return ctx.workspace.updateMeta({ interactive: !p.meta.interactive });
-      },
-    });
+    for (const m of MODES) {
+      ctx.commands.register({ id: `problems.mode.${m.id}`, title: `Set mode: ${m.label}`, category: "Problem", run: () => setMode(ctx, m.id) });
+    }
     ctx.commands.register({
       id: "problems.openInteractor",
       title: "Open interactor file",

@@ -3,6 +3,23 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — One Run button, per-problem Playground mode
+
+- Feedback: two Run buttons in the Playground, and problems saved from the playground ran tests.
+- Plugin API: `ctx.run` run targets (`register({ id, label, icon, priority, applies, run, useBusy, stop })`,
+  `current`, `useCurrent`, `runCurrent`) and `ctx.panels.active()/useActive()` (dockview
+  `onDidActivePanelChange`). Core registers `core.tests` (priority 0); the playground registers
+  `playground.file` (20, Playground panel active) and `playground.problem` (10, problem `runMode`).
+- `run.primary` (Ctrl+Enter) runs the current target; `runner.runAll` no longer has a default key
+  (users who rebound it keep their binding). The top Run button shows the target's icon/label and
+  becomes Stop while it runs. The Playground panel's own Run button was removed.
+- Problem meta `runMode: "tests" | "playground"` (+ create input). Mode UI: `problem/ModeControl.tsx`
+  — `ModeChip` (Tests header, replaces the interactive chip) and `ModeSegmented` (Problem panel);
+  commands `problems.mode.<standard|interactive|playground>` replace `problems.toggleInteractive`.
+- Verified: playground-mode problem → Ctrl+Enter runs in the terminal (no tests run); standard → tests
+  (AC); Playground panel active → playground file / Stop while busy; save-as-problem stores
+  `runMode: playground`; Mode control rendered in the Problem panel.
+
 ## 2026-10-08 — Phase 5 complete (Playground)
 
 - Interactive mode made discoverable first: the box moved under Status/Language in the Problem panel,

@@ -28,6 +28,8 @@ export const problemMetaSchema = z.object({
   /** Interactive problem: tests run the solution against `interactor` (a file in the problem folder). */
   interactive: z.boolean().optional(),
   interactor: z.string().optional(),
+  /** "playground": Run executes the main file in the terminal (live input) instead of the tests. */
+  runMode: z.enum(["tests", "playground"]).optional(),
   /** Overrides `runner.compareMode` / `runner.floatEpsilon` for this problem. */
   compareMode: compareModeSchema.optional(),
   floatEpsilon: z.number().nonnegative().optional(),
@@ -71,6 +73,7 @@ export const createProblemSchema = z.object({
   tests: z.array(z.object({ input: z.string(), expected: z.string() })).optional(),
   /** Template file name from the template library (default: the language's default template). */
   template: z.string().optional(),
+  runMode: z.enum(["tests", "playground"]).optional(),
 });
 export type CreateProblemInput = z.input<typeof createProblemSchema>;
 
@@ -88,6 +91,7 @@ export const problemMetaPatchSchema = problemMetaSchema
     floatEpsilon: true,
     interactive: true,
     interactor: true,
+    runMode: true,
   })
   .partial();
 export type ProblemMetaPatch = z.infer<typeof problemMetaPatchSchema>;

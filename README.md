@@ -37,7 +37,7 @@ All of these can be changed in **Keyboard Shortcuts** (Ctrl+Alt+K).
 |---|---|
 | Ctrl+P | Palette: problems and files (type `>` commands, `#` panels, `!` layouts, `:` line, `?` help) |
 | Ctrl+Shift+P / Ctrl+Alt+P / Ctrl+G | Palette in commands / panels / go-to-line mode |
-| Ctrl+Enter / Ctrl+Shift+Enter | Run all tests / run with custom input |
+| Ctrl+Enter / Ctrl+Shift+Enter | Run (tests, or the terminal for Playground-mode problems / the Playground) / run with custom input |
 | Ctrl+S · Shift+Alt+F | Save · format document |
 | Alt+N / Alt+Shift+N | New scratch problem / new problem |
 | F2 | Rename the current file |

@@ -1,5 +1,5 @@
-import { ChevronDown, FilePlus2, Loader2, Play, Zap } from "lucide-react";
-import type { PanelProps } from "@cp-ide/plugin-api/web";
+import { ChevronDown, FilePlus2, Loader2, Play, Square, Zap } from "lucide-react";
+import type { PanelProps, RunTarget } from "@cp-ide/plugin-api/web";
 import {
   Button,
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   Kbd,
+  Tooltip,
   cn,
 } from "@cp-ide/ui";
 import { NewProblemDialog } from "./NewProblemDialog.tsx";
@@ -37,16 +38,42 @@ export function NewMenu({ ctx }: PanelProps) {
   );
 }
 
-export function RunButton({ ctx }: PanelProps) {
-  const phase = ctx.runner.use((s) => s.phase);
-  const hasProblem = ctx.workspace.use((s) => !!s.problem);
+function TargetButton({ ctx, target }: PanelProps & { target: RunTarget }) {
+  const busy = target.useBusy?.() ?? false;
+  const binding = ctx.commands.useList().find((c) => c.id === "run.primary")?.keybinding;
+  const Icon = target.icon ?? Play;
+  const stoppable = busy && target.stop;
   return (
-    <Button size="sm" className="min-w-24" disabled={!hasProblem || phase !== "idle"} onClick={() => ctx.runner.run()}>
-      {phase === "idle" ? <Play /> : <Loader2 className="animate-spin" />}
-      {phase === "compiling" ? "Compiling" : phase === "running" ? "Running" : "Run"}
-      <Kbd className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80">Ctrl+↵</Kbd>
-    </Button>
+    <Tooltip content={stoppable ? "Stop" : `${target.label}${binding ? ` (${ctx.commands.formatKeybinding(binding)})` : ""}`}>
+      <Button
+        size="sm"
+        variant={stoppable ? "secondary" : "default"}
+        className="min-w-24"
+        disabled={busy && !target.stop}
+        onClick={() => (stoppable ? target.stop!() : ctx.run.runCurrent())}
+      >
+        {stoppable ? <Square className="fill-current" /> : busy ? <Loader2 className="animate-spin" /> : <Icon />}
+        {stoppable ? "Stop" : busy ? "Running" : "Run"}
+        {!busy && binding && (
+          <Kbd className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground/80">{ctx.commands.formatKeybinding(binding)}</Kbd>
+        )}
+      </Button>
+    </Tooltip>
   );
+}
+
+/** Runs whatever fits the context: tests, the playground file, or a problem in the terminal. */
+export function RunButton({ ctx }: PanelProps) {
+  const target = ctx.run.useCurrent();
+  if (!target) {
+    return (
+      <Button size="sm" className="min-w-24" disabled>
+        <Play /> Run
+      </Button>
+    );
+  }
+  // Keyed by target so each target's busy hook gets its own mount.
+  return <TargetButton key={target.id} ctx={ctx} target={target} />;
 }
 
 // ---- status bar ----

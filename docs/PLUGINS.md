@@ -55,8 +55,9 @@ export default definePlugin({
 | `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta(patch, id?)`, `renameProblem`/`moveProblem`/`deleteProblem`/`restoreProblem`, `setBuffer`, `save`, `createFile`/`renameFile`/`deleteFile`, `addTest`/`updateTest`/`removeTest`/`duplicateTest`/`moveTest` |
 | `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()` (main + interactor for interactive problems), `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
-| `panels` | `register`, `open`, `close`, `toggle`, `isOpen`, `useIsOpen`, `list` |
+| `panels` | `register`, `open`, `close`, `toggle`, `isOpen`, `useIsOpen`, `active`, `useActive`, `list` |
 | `commands` | `register` (with optional `keybinding` and `when` condition), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
+| `run` | run targets for the top-bar Run / Ctrl+Enter: `register({ id, label, priority, applies, run, useBusy?, stop? })`, `current`, `useCurrent`, `runCurrent` |
 | `layout` | `registerPreset({ id, name, panels })`, `applyPreset`, `listPresets`, `saveCurrent(name)`, `deleteSaved`, `reset` |
 | `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive })` — all promise-based |
 | `library` | templates & snippets: `list(kind)`, `use(kind)` (hook), `save`, `create`, `rename`, `remove` |
@@ -75,7 +76,7 @@ Every `register`/`on` returns a `Disposable` and is also tracked per plugin auto
 primitives or existing references (`s.problem`, `s.problem?.id`). Building a new object/array inside
 the selector re-renders forever — derive in the component (or `useMemo`) instead.
 
-Commands other plugins can call (the palette, Ctrl+Shift+P, lists them all): `runner.runAll`,
+Commands other plugins can call (the palette, Ctrl+Shift+P, lists them all): `run.primary`, `runner.runAll`,
 `runner.runCustom`, `workspace.save`, `workspace.newScratch`, `workspace.newProblem`, `editor.newFile(name?)`,
 `editor.renameFile(name?)`, `editor.deleteFile(name?)`, `editor.revealLine(line, col)`, `editor.focus`,
 `tests.add`, `tests.import`, `settings.open`, `keybindings.open`, `layout.preset.<id>`, `view.toggle.<panelId>`,

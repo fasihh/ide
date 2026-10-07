@@ -239,6 +239,35 @@ export interface ServicesApi {
   whenAvailable<T extends object>(name: string, callback: (service: T) => void): Disposable;
 }
 
+/**
+ * Something the top-bar Run button (and Ctrl+Enter) can run. The applicable target with the highest
+ * priority wins — e.g. the playground file while the Playground panel is active, otherwise the tests.
+ */
+export interface RunTarget {
+  id: string;
+  /** Shown in the Run button's tooltip, e.g. "Run tests", "Run in terminal". */
+  label: string;
+  icon?: IconComponent;
+  /** Higher wins among applicable targets (core tests target: 0). */
+  priority?: number;
+  /** Whether this target applies right now (active panel, open problem's mode, …). */
+  applies(): boolean;
+  run(): unknown;
+  /** React hook: show the button as busy (it becomes a Stop button when `stop` exists). */
+  useBusy?(): boolean;
+  stop?(): unknown;
+}
+
+export interface RunApi {
+  register(target: RunTarget): Disposable;
+  /** The target the Run button would use now. */
+  current(): RunTarget | undefined;
+  /** React hook version of `current` (re-evaluates on panel focus / problem changes). */
+  useCurrent(): RunTarget | undefined;
+  /** Run the current target. */
+  runCurrent(): Promise<void>;
+}
+
 export interface StatusBarContribution extends UiItemContribution {
   align: "left" | "right";
 }
@@ -271,6 +300,10 @@ export interface PanelsApi {
   toggle(id: string): void;
   /** Whether a panel is currently open in the layout. */
   isOpen(id: string): boolean;
+  /** The active (focused) panel's id. */
+  active(): string | undefined;
+  /** React hook version of `active`. */
+  useActive(): string | undefined;
   /** React hook version of `isOpen`. */
   useIsOpen(id: string): boolean;
   list(): PanelContribution[];
@@ -360,6 +393,7 @@ export interface WebPluginContext {
   readonly services: ServicesApi;
   readonly events: EventsApi;
   readonly layout: LayoutApi;
+  readonly run: RunApi;
   readonly library: LibraryApi;
   readonly ui: UiApi;
   readonly notify: NotifyApi;
