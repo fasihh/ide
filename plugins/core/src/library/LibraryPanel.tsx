@@ -4,7 +4,7 @@ import { Pencil, Plus, Star, Trash2 } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
 import { type LibraryItem, type LibraryKind, libraryNameSchema } from "@cp-ide/shared";
 import { Button, Tooltip, cn } from "@cp-ide/ui";
-import { defineThemes } from "../editor/monaco.ts";
+import { defineThemes, overflowWidgetsHost } from "../editor/monaco.ts";
 
 const SAVE_DELAY = 600;
 
@@ -196,6 +196,7 @@ export function LibraryPanel({ ctx }: PanelProps) {
               scrollBeyondLastLine: false,
               padding: { top: 8 },
               fixedOverflowWidgets: true,
+              overflowWidgetsDomNode: overflowWidgetsHost(),
             }}
           />
         ) : (

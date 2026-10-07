@@ -14,7 +14,7 @@ import {
   Tooltip,
   cn,
 } from "@cp-ide/ui";
-import { defineThemes, monaco } from "./monaco.ts";
+import { defineThemes, monaco, overflowWidgetsHost } from "./monaco.ts";
 import { parseDiagnostics } from "./diagnostics.ts";
 
 type CodeEditor = monaco.editor.IStandaloneCodeEditor;
@@ -333,6 +333,7 @@ export function EditorPanel({ ctx }: PanelProps) {
             smoothScrolling: true,
             cursorBlinking: "smooth",
             fixedOverflowWidgets: true,
+            overflowWidgetsDomNode: overflowWidgetsHost(),
             bracketPairColorization: { enabled: true },
             renderWhitespace: "selection",
             stickyScroll: { enabled: false },

@@ -8,6 +8,25 @@ loader.config({ monaco });
 
 export { monaco };
 
+let overflowHost: HTMLElement | null = null;
+
+/**
+ * Container for Monaco's floating widgets (suggestions, hovers, parameter hints), attached to
+ * <body>. dockview panels sit in overlays with `transform`/`contain`, which makes them the
+ * containing block for `position: fixed` — so with `fixedOverflowWidgets` alone the widgets are
+ * offset by the panel's position and clipped at its edges. The `monaco-editor` class gives the
+ * host Monaco's theme variables.
+ */
+export function overflowWidgetsHost(): HTMLElement {
+  if (!overflowHost) {
+    overflowHost = document.createElement("div");
+    overflowHost.className = "monaco-editor cp-monaco-overflow";
+    Object.assign(overflowHost.style, { position: "absolute", top: "0", left: "0", width: "0", height: "0", zIndex: "40" });
+    document.body.appendChild(overflowHost);
+  }
+  return overflowHost;
+}
+
 const canvas = document.createElement("canvas");
 canvas.width = canvas.height = 1;
 const c2d = canvas.getContext("2d", { willReadFrequently: true })!;

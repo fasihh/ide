@@ -3,6 +3,16 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-07 — Fix: editor suggestions offset from the cursor
+
+dockview panel overlays use `transform: translate3d(0,0,0)` / `will-change: transform` /
+`contain: layout paint`, which makes them the containing block for `position: fixed`. Monaco's
+`fixedOverflowWidgets` positions widgets in viewport coordinates, so suggestions/hovers were offset
+by the panel's position (and could be clipped). Both Monaco editors now pass
+`overflowWidgetsDomNode: overflowWidgetsHost()` — a `.monaco-editor` container on <body>
+(`plugins/core/src/editor/monaco.ts`). Verified: suggest widget left/top line up with the cursor.
+Any future plugin that embeds Monaco in a panel should do the same.
+
 ## 2026-10-07 — Command palette module
 
 - New `plugins/palette` replaces the palette that lived in the core plugin (`chrome/palette.ts` →
