@@ -13,7 +13,6 @@ export function expandHome(p: string): string {
 export const DATA_DIR = path.resolve(expandHome(process.env.CP_IDE_HOME ?? "~/.cp-ide"));
 export const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 export const CACHE_DIR = path.join(DATA_DIR, "cache");
-export const TEMPLATES_DIR = path.join(DATA_DIR, "templates");
 export const PLUGIN_DATA_DIR = path.join(DATA_DIR, "plugins");
 
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");

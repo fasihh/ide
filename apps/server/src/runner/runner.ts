@@ -146,7 +146,7 @@ export class RunnerService implements RunnerApi {
       req.expected,
       res.stdout,
       req.compareMode ?? this.settings.get("runner.compareMode"),
-      this.settings.get("runner.floatEpsilon"),
+      req.floatEpsilon ?? this.settings.get("runner.floatEpsilon"),
     );
     return diff ? { ...base, verdict: "WA", diff } : { ...base, verdict: "AC" };
   }

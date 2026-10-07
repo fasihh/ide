@@ -14,10 +14,13 @@ process.env.CP_IDE_HOME = home;
 const { SettingsService } = await import("./services/settings.ts");
 const { ProblemsService } = await import("./services/problems.ts");
 const { RunnerService } = await import("./runner/runner.ts");
+const { LibraryService } = await import("./services/library.ts");
+const { ProblemsWatcher } = await import("./services/watcher.ts");
 
 const settings = new SettingsService();
 const runner = new RunnerService(settings);
-const problems = new ProblemsService(settings);
+const library = new LibraryService();
+const problems = new ProblemsService(settings, library);
 
 before(async () => {
   await settings.update({ "problems.root": path.join(home, "cp").replace(/\\/g, "/") });
@@ -121,10 +124,72 @@ describe("problems", () => {
     await assert.rejects(problems.renameFile(p.id, "sol.py", "sol.txt"), /must stay/);
   });
 
+  test("move renames the folder, trash + restore round-trips", async () => {
+    const p = await problems.create({ name: "C. Old Name", platform: "codeforces", group: "Round 7" });
+    const moved = await problems.move(p.id, { name: "C. New Name", group: "Round 8" });
+    assert.equal(moved.id, "codeforces/round-8/c-new-name");
+    assert.equal(moved.meta.name, "C. New Name");
+    assert.equal(moved.meta.group, "Round 8");
+    // The emptied "round-7" folder is cleaned up.
+    await assert.rejects(fs.access(path.join(problems.root(), "codeforces", "round-7")));
+
+    const other = await problems.create({ name: "C. New Name", platform: "codeforces", group: "Round 9" });
+    await assert.rejects(problems.move(other.id, { group: "Round 8" }), /already exists/);
+
+    const trashId = await problems.trash(moved.id);
+    assert.ok(!(await problems.list()).some((x) => x.id === moved.id));
+    const restored = await problems.restore(trashId);
+    assert.equal(restored.id, moved.id);
+    assert.equal(restored.meta.name, "C. New Name");
+  });
+
+  test("templates: named template on create, default from settings", async () => {
+    await library.create("templates", "tiny.cpp", "// tiny\n");
+    const p = await problems.create({ name: "T", platform: "custom", group: "t", template: "tiny.cpp" });
+    assert.equal(p.files.find((f) => f.name === "main.cpp")?.content, "// tiny\n");
+    await settings.update({ "templates.defaultCpp": "tiny.cpp" });
+    const q = await problems.create({ name: "U", platform: "custom", group: "t" });
+    assert.equal(q.files.find((f) => f.name === "main.cpp")?.content, "// tiny\n");
+    await settings.update({ "templates.defaultCpp": null });
+  });
+
   test("rejects paths outside the root and bad file names", async () => {
     await assert.rejects(problems.get("../../etc"));
     const p = await problems.createScratch("cpp");
     await assert.rejects(problems.writeFile(p.id, "../evil.cpp", "x"));
     await assert.rejects(problems.writeFile(p.id, "run.exe", "x"));
+  });
+});
+
+describe("library", () => {
+  test("seeds defaults once, CRUD, rejects bad names", async () => {
+    const templates = await library.list("templates");
+    assert.ok(templates.some((t) => t.name === "main.cpp") && templates.some((t) => t.name === "main.py"));
+    const snippets = await library.list("snippets");
+    assert.ok(snippets.some((t) => t.name === "dsu.cpp"));
+
+    await library.remove("snippets", "dsu.cpp");
+    assert.ok(!(await library.list("snippets")).some((t) => t.name === "dsu.cpp"), "deleted defaults stay deleted");
+
+    await library.create("snippets", "seg.cpp", "struct Seg {};\n");
+    await library.rename("snippets", "seg.cpp", "segtree.cpp");
+    await library.save("snippets", "segtree.cpp", "struct SegTree {};\n");
+    assert.equal(await library.read("snippets", "segtree.cpp"), "struct SegTree {};\n");
+    await assert.rejects(library.create("snippets", "../evil.cpp"));
+    await assert.rejects(library.create("snippets", "segtree.cpp"), /already exists/);
+  });
+});
+
+describe("watcher", () => {
+  test("reports the problem folder of changed files", async () => {
+    const p = await problems.createScratch("cpp");
+    const seen: string[][] = [];
+    const w = new ProblemsWatcher((ids) => seen.push(ids));
+    w.watch(problems.root());
+    await new Promise((r) => setTimeout(r, 200));
+    await fs.writeFile(path.join(problems.dir(p.id), "main.cpp"), "// external edit\n");
+    await new Promise((r) => setTimeout(r, 1000));
+    w.close();
+    assert.ok(seen.flat().includes(p.id), `expected ${p.id} in ${JSON.stringify(seen)}`);
   });
 });

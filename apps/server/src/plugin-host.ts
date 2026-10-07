@@ -59,12 +59,13 @@ export class ServerPluginHost {
   }
 
   private createContext(pluginId: string): ServerPluginContext {
-    const { settings, problems, runner, events } = this.services;
+    const { settings, problems, library, runner, events } = this.services;
     return {
       pluginId,
       dataDir: path.join(PLUGIN_DATA_DIR, pluginId),
       settings,
       problems,
+      library,
       runner,
       on: (event, handler) => events.on(event, handler),
       log: (...args) => console.log(`[${pluginId}]`, ...args),

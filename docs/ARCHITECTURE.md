@@ -18,7 +18,8 @@
                 ▼
    ~/cp/…                    problems (plain files, user-visible)
    ~/.cp-ide/settings.json   overrides only
-   ~/.cp-ide/templates/      main.cpp / main.py templates
+   ~/.cp-ide/templates/      template library (main.cpp, main.py, multitest.cpp, …)
+   ~/.cp-ide/snippets/       snippet library (dsu.cpp, binpow.cpp, …)
    ~/.cp-ide/cache/          compiled binaries keyed by content hash
    ~/.cp-ide/plugins/<id>/   private plugin storage
 ```
@@ -46,7 +47,8 @@ Imports use explicit `.ts` extensions (`allowImportingTsExtensions`).
   problem.json   # ProblemMeta: name, platform, group, url, language, mainFile, timeLimitMs?,
                  #   memoryLimitMb?, status (todo|attempted|solved), tags, notes, createdAt, updatedAt
   tests.json     # TestCase[]: { id, input, expected, isSample, enabled }
-  main.cpp|py    # created from ~/.cp-ide/templates/main.<ext>
+  main.cpp|py    # created from a template (default per language: templates.defaultCpp/Python)
+<problems.root>/.trash/<timestamp>-<name>/   # deleted problems (+ .cp-ide-trash.json with the old id)
 ```
 
 A problem's **id** is its folder path relative to the root (posix `/`). The server scans the root
@@ -65,6 +67,9 @@ Scratch problems go to `scratch/<yyyy-mm-dd>/scratch-<hhmmss>`.
 | `POST /api/problems`, `POST /api/problems/scratch` | create |
 | `PATCH /api/problems/meta` · `PUT /api/problems/file` · `PUT /api/problems/tests` | update |
 | `POST /api/problems/file/{create,delete,rename}` | extra files in a problem (returns the refreshed problem) |
+| `POST /api/problems/{move,trash,restore}` | rename/move a problem folder, move to `.trash`, restore |
+| `GET/PUT /api/library/:kind`, `POST /api/library/:kind/{create,rename,delete}` | templates / snippets |
+| `GET /api/events` | SSE stream of `ServerEvent`s (problems changed on disk) |
 | `POST /api/run/compile` | `{ language, source, fileName }` → `CompileResult` (`artifactId`) |
 | `POST /api/run/exec` | `{ artifactId, input, expected?, timeLimitMs?, compareMode? }` → `ExecResult` |
 | `/api/plugins/<id>/*` | plugin routes |
@@ -107,6 +112,10 @@ Timing is wall-clock including process start (~10–30 ms on Windows). Memory is
   from CSS tokens at runtime (`plugins/core/src/editor/monaco.ts`).
 - **Workspace** (`core/workspace.ts`): open problem, buffers (`content` vs `saved`), debounced
   autosave and tests save, last problem restored from localStorage.
+- **Live sync** (`core/server-events.ts`): EventSource on `/api/events`; on `problems-changed` the list
+  refreshes quietly and `reconcileFromDisk` updates the open problem (clean buffers take disk content,
+  dirty ones are kept; tests replaced unless a local save is pending). A watchdog reconnects when the
+  20s pings stop (dev proxies can leave dead connections after a server restart).
 - Dev only: `window.__cp` exposes stores and services for debugging.
 
 ## Testing

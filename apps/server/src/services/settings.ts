@@ -9,6 +9,7 @@ import {
 import type { SettingsService as SettingsApi } from "@cp-ide/plugin-api/server";
 import { SETTINGS_FILE } from "../paths.ts";
 import { HttpError } from "../errors.ts";
+import { writeFileAtomic } from "../fs-utils.ts";
 
 export class SettingsService implements SettingsApi {
   private overrides: Record<string, unknown> = {};
@@ -71,9 +72,7 @@ export class SettingsService implements SettingsApi {
     }
     this.overrides = next;
     await fs.mkdir(path.dirname(SETTINGS_FILE), { recursive: true });
-    const tmp = `${SETTINGS_FILE}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(next, null, 2));
-    await fs.rename(tmp, SETTINGS_FILE);
+    await writeFileAtomic(SETTINGS_FILE, JSON.stringify(next, null, 2));
     for (const l of this.listeners) l(patch);
   }
 

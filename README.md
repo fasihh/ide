@@ -25,7 +25,9 @@ pnpm start      # builds the web app, serves everything on http://localhost:7420
 Data locations:
 - Problems: `~/cp` (Settings → Problems root)
 - Settings, templates, compile cache: `~/.cp-ide` (override with `CP_IDE_HOME`)
-- Edit `~/.cp-ide/templates/main.cpp` / `main.py` to change the template for new problems
+- Templates and snippets: `~/.cp-ide/templates`, `~/.cp-ide/snippets` (edit them in the
+  **Templates & Snippets** panel, from the command palette)
+- Deleted problems go to `<problems root>/.trash`
 
 ## Shortcuts
 
@@ -39,6 +41,7 @@ All of these can be changed in **Keyboard Shortcuts** (Ctrl+Alt+K).
 | Alt+N / Alt+Shift+N | New scratch problem / new problem |
 | F2 | Rename the current file |
 | Alt+T | Add test |
+| Ctrl+Alt+I | Insert snippet |
 | Ctrl+B / Ctrl+J | Toggle problems / output panel |
 | Alt+1…4 | Code / Tests / Problem / Custom Input panel |
 | Ctrl+Alt+1…4 | Default / Focus / Zen / Everything layout |

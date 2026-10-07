@@ -7,6 +7,8 @@
  */
 import type { Hono } from "hono";
 import type {
+  LibraryItem,
+  LibraryKind,
   CompileRequest,
   CompileResult,
   CoreSettings,
@@ -28,6 +30,8 @@ export interface ServerEvents {
   "problem:updated": { id: string };
   "compile:done": { request: CompileRequest; result: CompileResult };
   "settings:changed": { changed: Partial<CoreSettings> & Record<string, unknown> };
+  /** Files under the problems root changed (debounced). `ids` are affected problem folders. */
+  "problems:changed": { ids: string[] };
 }
 
 export interface SettingsService {
@@ -49,8 +53,19 @@ export interface ProblemsService {
   createFile(id: string, file: string, content?: string): Promise<void>;
   deleteFile(id: string, file: string): Promise<void>;
   renameFile(id: string, from: string, to: string): Promise<void>;
+  /** Rename/move: the folder follows platform/group/name. Returns the problem under its new id. */
+  move(id: string, target: { name?: string; platform?: string; group?: string }): Promise<Problem>;
+  /** Move to `<root>/.trash`; returns a trash id for `restore`. */
+  trash(id: string): Promise<string>;
+  restore(trashId: string): Promise<Problem>;
   /** Absolute folder of a problem. */
   dir(id: string): string;
+}
+
+export interface LibraryService {
+  list(kind: LibraryKind): Promise<LibraryItem[]>;
+  read(kind: LibraryKind, name: string): Promise<string | null>;
+  save(kind: LibraryKind, name: string, content: string): Promise<void>;
 }
 
 export interface RunnerService {
@@ -64,6 +79,7 @@ export interface ServerPluginContext {
   readonly dataDir: string;
   readonly settings: SettingsService;
   readonly problems: ProblemsService;
+  readonly library: LibraryService;
   readonly runner: RunnerService;
   on<K extends keyof ServerEvents>(event: K, handler: (payload: ServerEvents[K]) => void): Disposable;
   log(...args: unknown[]): void;

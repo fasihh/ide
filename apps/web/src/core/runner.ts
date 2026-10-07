@@ -77,7 +77,16 @@ async function run(testIds?: string[]) {
       let result: ExecResult;
       try {
         result = await unwrap(
-          api.run.exec.$post({ json: { artifactId: compiled.artifactId, input: t.input, expected: t.expected, timeLimitMs } }),
+          api.run.exec.$post({
+            json: {
+              artifactId: compiled.artifactId,
+              input: t.input,
+              expected: t.expected,
+              timeLimitMs,
+              compareMode: problem.meta.compareMode,
+              floatEpsilon: problem.meta.floatEpsilon,
+            },
+          }),
         );
       } catch (err) {
         result = { verdict: "RE", timeMs: 0, exitCode: null, stdout: "", stderr: "", message: err instanceof Error ? err.message : String(err) };

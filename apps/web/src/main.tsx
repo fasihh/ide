@@ -6,6 +6,7 @@ import { installKeybindings } from "./core/keybindings.ts";
 import { activatePlugins } from "./core/plugin-host.ts";
 import { loadSettings, useSettings } from "./core/settings.ts";
 import { installTheme } from "./core/theme.ts";
+import { installServerEvents } from "./core/server-events.ts";
 import { restoreLastProblem, workspace } from "./core/workspace.ts";
 import { reportError } from "./core/notify.ts";
 
@@ -43,6 +44,7 @@ async function boot() {
     </StrictMode>,
   );
   await workspace.refreshProblems().catch(reportError("Could not list problems"));
+  installServerEvents();
   await restoreLastProblem();
 }
 

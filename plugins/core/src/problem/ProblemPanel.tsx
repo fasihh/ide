@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, FolderInput, Pencil, Trash2 } from "lucide-react";
 import type { PanelProps } from "@cp-ide/plugin-api/web";
-import type { Language, ProblemMetaPatch, ProblemStatus } from "@cp-ide/shared";
-import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "@cp-ide/ui";
+import type { CompareMode, Language, ProblemMetaPatch, ProblemStatus } from "@cp-ide/shared";
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, cn } from "@cp-ide/ui";
+import { deleteProblem, moveProblem, renameProblem } from "../explorer/actions.ts";
 
 /** Text input that commits on blur / Enter instead of on every keystroke. */
 function CommitInput({
@@ -26,6 +27,8 @@ function CommitInput({
 export function ProblemPanel({ ctx }: PanelProps) {
   const problem = ctx.workspace.use((s) => s.problem);
   const defaultTl = ctx.settings.use("runner.timeLimitMs");
+  const defaultCompare = ctx.settings.use("runner.compareMode");
+  const defaultEps = ctx.settings.use("runner.floatEpsilon");
   const [notes, setNotes] = useState("");
   useEffect(() => setNotes(problem?.meta.notes ?? ""), [problem?.id, problem?.meta.notes]);
 
@@ -86,6 +89,31 @@ export function ProblemPanel({ ctx }: PanelProps) {
           <Label>Memory limit (MB)</Label>
           <CommitInput type="number" placeholder="—" value={meta.memoryLimitMb?.toString() ?? ""} onCommit={(v) => update({ memoryLimitMb: num(v) })} />
         </div>
+        <div className="grid gap-1.5">
+          <Label>Output comparison</Label>
+          <Select value={meta.compareMode ?? "__default"} onValueChange={(v) => update({ compareMode: v === "__default" ? undefined : (v as CompareMode) })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__default">Default ({defaultCompare})</SelectItem>
+              <SelectItem value="token">Tokens</SelectItem>
+              <SelectItem value="float">Float tolerance</SelectItem>
+              <SelectItem value="exact">Exact</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label className={cn((meta.compareMode ?? defaultCompare) !== "float" && "opacity-50")}>Float tolerance</Label>
+          <CommitInput
+            type="number"
+            step="any"
+            placeholder={`${defaultEps} (default)`}
+            disabled={(meta.compareMode ?? defaultCompare) !== "float"}
+            value={meta.floatEpsilon?.toString() ?? ""}
+            onCommit={(v) => update({ floatEpsilon: v.trim() === "" || Number.isNaN(Number(v)) ? undefined : Math.max(0, Number(v)) })}
+          />
+        </div>
       </div>
       <div className="grid gap-1.5">
         <Label>Tags</Label>
@@ -104,6 +132,17 @@ export function ProblemPanel({ ctx }: PanelProps) {
           onChange={(e) => setNotes(e.target.value)}
           onBlur={() => notes !== (meta.notes ?? "") && update({ notes })}
         />
+      </div>
+      <div className="flex flex-wrap gap-1.5 border-t pt-3">
+        <Button variant="outline" size="sm" onClick={() => renameProblem(ctx, problem.id)}>
+          <Pencil /> Rename
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => moveProblem(ctx, problem.id)}>
+          <FolderInput /> Move
+        </Button>
+        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => deleteProblem(ctx, problem.id)}>
+          <Trash2 /> Delete
+        </Button>
       </div>
       <div className="font-mono text-[0.625rem] break-all text-muted-foreground">{problem.id}</div>
     </div>

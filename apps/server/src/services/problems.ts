@@ -15,56 +15,19 @@ import {
   testCaseSchema,
 } from "@cp-ide/shared";
 import type { ProblemsService as ProblemsApi } from "@cp-ide/plugin-api/server";
-import { TEMPLATES_DIR, expandHome, resolveInside } from "../paths.ts";
+import { expandHome, resolveInside } from "../paths.ts";
 import { HttpError } from "../errors.ts";
+import { writeFileAtomic } from "../fs-utils.ts";
+import type { LibraryService } from "./library.ts";
 import type { SettingsService } from "./settings.ts";
 
 const META_FILE = "problem.json";
 const TESTS_FILE = "tests.json";
+const TRASH_DIR = ".trash";
+const TRASH_MARKER = ".cp-ide-trash.json";
 const SOURCE_EXTS = new Set([".cpp", ".cc", ".cxx", ".h", ".hpp", ".py", ".txt", ".in", ".out", ".ans", ".md"]);
 const MAX_SCAN_DEPTH = 5;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
-
-const DEFAULT_TEMPLATES: Record<Language, string> = {
-  cpp: `#include <bits/stdc++.h>
-using namespace std;
-
-#ifdef LOCAL
-#define dbg(x) cerr << #x << " = " << (x) << endl
-#else
-#define dbg(x)
-#endif
-
-void solve() {
-
-}
-
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int t = 1;
-    // cin >> t;
-    while (t--) solve();
-}
-`,
-  python: `import sys
-input = sys.stdin.readline
-
-
-def solve():
-    pass
-
-
-def main():
-    t = 1
-    # t = int(input())
-    for _ in range(t):
-        solve()
-
-
-main()
-`,
-};
 
 export function slugify(s: string): string {
   return (
@@ -82,6 +45,7 @@ const now = () => new Date().toISOString();
 export class ProblemsService implements ProblemsApi {
   constructor(
     private settings: SettingsService,
+    private library: LibraryService,
     private onCreated: (p: Problem) => void = () => {},
   ) {}
 
@@ -177,7 +141,7 @@ export class ProblemsService implements ProblemsApi {
       enabled: true,
     }));
 
-    await fs.writeFile(path.join(dir, mainFile), await this.template(language));
+    await fs.writeFile(path.join(dir, mainFile), await this.template(language, input.template));
     await writeJson(path.join(dir, META_FILE), meta);
     await writeJson(path.join(dir, TESTS_FILE), tests);
 
@@ -267,6 +231,59 @@ export class ProblemsService implements ProblemsApi {
     return file;
   }
 
+  /**
+   * Rename and/or move a problem. The folder follows `platform/group/name` (slugified); returns the
+   * problem under its new id.
+   */
+  async move(id: string, target: { name?: string; platform?: string; group?: string }): Promise<Problem> {
+    const root = this.root();
+    const dir = this.dir(id);
+    const meta = await this.readMeta(dir);
+    const next = { ...meta, ...Object.fromEntries(Object.entries(target).filter(([, v]) => v?.trim())), updatedAt: now() };
+    const newId = [slugify(next.platform), slugify(next.group), slugify(next.name)].join("/");
+    let newDir = dir;
+    if (newId !== id) {
+      newDir = this.dir(newId);
+      if (await exists(newDir)) throw new HttpError(409, `A problem already exists at ${newId}`);
+      await fs.mkdir(path.dirname(newDir), { recursive: true });
+      await renameDir(dir, newDir);
+      await removeEmptyParents(path.dirname(dir), root);
+    }
+    await writeJson(path.join(newDir, META_FILE), next);
+    return this.get(newId === id ? id : newId);
+  }
+
+  /** Move a problem to `<root>/.trash` (restorable). Returns the trash entry id. */
+  async trash(id: string): Promise<string> {
+    const root = this.root();
+    const dir = this.dir(id);
+    await this.readMeta(dir); // must be a problem
+    const trashId = `${Date.now()}-${path.basename(dir)}`;
+    const dest = path.join(root, TRASH_DIR, trashId);
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await renameDir(dir, dest);
+    await fs.writeFile(path.join(dest, TRASH_MARKER), JSON.stringify({ id, deletedAt: now() }));
+    await removeEmptyParents(path.dirname(dir), root);
+    return trashId;
+  }
+
+  /** Put a trashed problem back at its old location (with a suffix if that is taken now). */
+  async restore(trashId: string): Promise<Problem> {
+    const root = this.root();
+    if (trashId !== path.basename(trashId)) throw new HttpError(400, "Invalid trash id");
+    const src = path.join(root, TRASH_DIR, trashId);
+    const marker = JSON.parse(await fs.readFile(path.join(src, TRASH_MARKER), "utf8").catch(() => {
+      throw new HttpError(404, "Nothing to restore");
+    })) as { id: string };
+    let id = marker.id;
+    for (let i = 2; await exists(this.dir(id)); i++) id = `${marker.id}-${i}`;
+    const dest = this.dir(id);
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await renameDir(src, dest);
+    await fs.rm(path.join(dest, TRASH_MARKER), { force: true });
+    return this.get(id);
+  }
+
   async writeTests(id: string, tests: TestCase[]): Promise<void> {
     const dir = this.dir(id);
     await writeJson(path.join(dir, TESTS_FILE), tests);
@@ -292,16 +309,35 @@ export class ProblemsService implements ProblemsApi {
     }
   }
 
-  /** User template from ~/.cp-ide/templates/main.<ext>, created with a default on first use. */
-  private async template(language: Language): Promise<string> {
-    const p = path.join(TEMPLATES_DIR, `main.${LANGUAGE_INFO[language].ext}`);
+  /** Template content: the named library template, else the language's default, else built-in. */
+  private async template(language: Language, name?: string): Promise<string> {
+    const wanted = name ?? this.settings.get(language === "cpp" ? "templates.defaultCpp" : "templates.defaultPython");
+    return (await this.library.read("templates", wanted).catch(() => null)) ?? this.library.fallbackTemplate(language);
+  }
+}
+
+/** fs.rename, retried briefly: on Windows a watcher or antivirus can hold the folder for a moment. */
+async function renameDir(from: string, to: string) {
+  for (let attempt = 0; ; attempt++) {
     try {
-      return await fs.readFile(p, "utf8");
-    } catch {
-      await fs.mkdir(TEMPLATES_DIR, { recursive: true });
-      await fs.writeFile(p, DEFAULT_TEMPLATES[language]);
-      return DEFAULT_TEMPLATES[language];
+      return await fs.rename(from, to);
+    } catch (err: any) {
+      if (!["EPERM", "EBUSY", "EACCES"].includes(err.code) || attempt >= 5) {
+        throw new HttpError(500, `Could not move folder (${err.code}). Is it open in another program?`);
+      }
+      await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
     }
+  }
+}
+
+/** Remove now-empty platform/group folders up to (not including) the root. */
+async function removeEmptyParents(dir: string, root: string) {
+  let cur = dir;
+  while (path.relative(root, cur) && !path.relative(root, cur).startsWith("..")) {
+    const entries = await fs.readdir(cur).catch(() => null);
+    if (!entries || entries.length) return;
+    await fs.rmdir(cur).catch(() => {});
+    cur = path.dirname(cur);
   }
 }
 
@@ -312,8 +348,6 @@ async function exists(p: string) {
   );
 }
 
-async function writeJson(p: string, value: unknown) {
-  const tmp = `${p}.tmp`;
-  await fs.writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`);
-  await fs.rename(tmp, p);
+function writeJson(p: string, value: unknown) {
+  return writeFileAtomic(p, `${JSON.stringify(value, null, 2)}\n`);
 }

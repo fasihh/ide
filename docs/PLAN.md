@@ -58,8 +58,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
 
 - ✅ Command palette (Ctrl+Shift+P) over all commands (recently used first, fuzzy match); quick open problems (Ctrl+P)
 - ✅ Layout presets: Default / Focus / Zen / Everything (Ctrl+Alt+1–4), plugin-registered presets, save/apply/delete custom layouts
-- 🟡 Editor column absorbs window resizes: side/bottom group sizes are pinned and re-applied after resizes
-  (dockview has no group priority). Default sizes verified; live window-resize behaviour needs a manual check
+- ✅ Editor column absorbs window resizes: side/bottom group sizes are pinned and re-applied after resizes
+  (dockview has no group priority)
 - ✅ User keybinding overrides (`keybindings` setting) + Keyboard Shortcuts panel (record keys, conflicts, reset)
 - ✅ Vim mode (`monaco-vim`, `editor.vimMode`) with status line
 - ✅ Format document (Shift+Alt+F) as the `format` plugin — clang-format / black, configurable commands, optional format on save
@@ -67,13 +67,18 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
 - ✅ Tests: collapse/expand all, move up/down, duplicate, import `*.in` + `*.out`/`*.ans` files
 - ✅ Custom Input panel: run on scratch stdin without creating a test (Ctrl+Shift+Enter), save it as a test
 
-## Phase 3 — Problem management ⬜
+## Phase 3 — Problem management ✅
 
-- ⬜ Explorer: sort (recent / name), filter by status & tag, "recent problems" section
-- ⬜ Rename / move / delete problems (delete moves to `root/.trash`)
-- ⬜ Watch the problems root for external changes (fs.watch) and push updates (SSE/WebSocket)
-- ⬜ Template manager: multiple templates per language, pick on create; snippets
-- ⬜ Per-problem compare mode / epsilon override
+- ✅ Explorer: sort (recently changed / name / status), status filter chips with counts, tag filter,
+  "Recent" section, solved/total per platform and contest, view state remembered
+- ✅ Rename / move / delete problems (right-click menu, Problem panel, palette). The folder follows
+  platform/contest/name; delete moves to `<root>/.trash` with an Undo toast; rename a whole contest
+- ✅ Live sync: the server watches the problems root (`fs.watch`, recursive) and pushes changes over SSE
+  (`/api/events`); the list refreshes and the open problem reloads (unsaved edits are kept)
+- ✅ Template & snippet library (`~/.cp-ide/templates`, `~/.cp-ide/snippets`) with a manager panel,
+  default template per language, template picker on New Problem; snippets via Ctrl+Alt+I or editor
+  autocomplete
+- ✅ Per-problem output comparison mode and float tolerance
 
 ## Phase 4 — Power tools (each a plugin) ⬜
 

@@ -3,13 +3,46 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-07 — Phase 3 complete
+
+**Server**
+- `services/library.ts`: templates/snippets as files under `~/.cp-ide/<kind>/`, seeded once (a
+  `.seeded` marker keeps deleted defaults deleted). Routes `/api/library/:kind` (+ `create`, `rename`, `delete`).
+- `ProblemsService.move / trash / restore` (+ routes `/api/problems/{move,trash,restore}`); emptied
+  platform/contest folders are removed; folder renames retry on Windows EPERM/EBUSY.
+- `services/watcher.ts`: recursive `fs.watch` on the problems root → `problems:changed` server event
+  → SSE `/api/events` (`ServerEvent` in `packages/shared`). Re-watches when `problems.root` changes.
+- `fs-utils.ts` `writeFileAtomic`: temp + rename with retries and an in-place fallback (fixes EPERM
+  seen on Windows when a reader/antivirus touched `problem.json` during rename).
+- Problem meta gained `compareMode` / `floatEpsilon`; exec requests accept `floatEpsilon`; create
+  accepts `template`. New settings `templates.defaultCpp` / `templates.defaultPython`.
+
+**Plugin API** — `ctx.library` (list/use/save/create/rename/remove), `workspace.renameProblem /
+moveProblem / deleteProblem / restoreProblem`, `updateMeta(patch, id?)`, `WorkspaceState.problemsRoot`,
+notify actions (`{ label, run }`), events `problems:changed` and `problem:reloaded`. Server plugins
+get `ctx.library` and the `problems:changed` event.
+
+**Web** — `core/server-events.ts` (EventSource + watchdog reconnect + resync after reconnect),
+`reconcileFromDisk` in the workspace, `core/library.ts` store, ContextMenu in `packages/ui`.
+
+**Core plugin** — explorer rewrite, `explorer/actions.ts`, Templates & Snippets panel, snippet insert
+command + completion provider, New Problem template picker and "New problem here…", Problem panel
+comparison settings and rename/move/delete buttons, new commands (`problems.*`, `snippets.insert`,
+`library.open`, `editor.insertText`).
+
+**Verified** — explorer filters/sort/recent and context menu (screenshots); move → rename → delete →
+restore with the open problem following its new id; external edits (Git Bash, Node, PowerShell) reach
+the open problem incl. new files and tests; recovery after an API server restart (watchdog);
+template applied on create; snippet inserted at cursor; float tolerance override gives AC.
+Tests: 17 passing (new: move/trash/restore, templates, library, watcher).
+
 ## 2026-10-07 — Vim mode polish
 
 - Vim mode is shown as a coloured pill (NORMAL blue, INSERT green, VISUAL purple, REPLACE red) by
   subclassing monaco-vim's `StatusBar` (`plugins/core/src/editor/EditorPanel.tsx`).
 - Editing-mode dropdown (Default / Vim) pinned to the right end of the editor's file tab bar, Zed-style;
   it writes the same `editor.vimMode` setting as the Settings panel.
-- Feedback on the window-resize behaviour: only a slight improvement — still open (see LIMITATIONS).
+- Window-resize behaviour confirmed fine by the user.
 
 ## 2026-10-07 — Phase 2 complete
 

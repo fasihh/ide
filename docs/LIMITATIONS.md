@@ -22,6 +22,7 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | Compiler squiggles disappear on reload | Re-run to get them back |
 | Formatting needs `clang-format` / `black` installed (not bundled) | `pip install clang-format black`, or point Settings → Formatting at your own command |
 | Saved layouts live in browser localStorage (per browser profile), not in settings.json | Could move to the server later |
+| Snippets are inserted as plain text (no tab stops / placeholders) | Could adopt Monaco snippet syntax later |
 
 ## Layout & UI
 
@@ -37,8 +38,9 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 
 | Limitation | Notes / planned fix |
 |---|---|
-| Edits made to problem files outside the app aren't picked up until the problem is reopened | File watching (Phase 3) |
-| No rename / move / delete of problems from the UI | Phase 3 |
+| If a file changes on disk while it has unsaved edits in the app, the app keeps your edits (no merge prompt) | Saving overwrites the external change |
+| Trash (`<root>/.trash`) is never emptied automatically; restore is only offered right after deleting (Undo) | Delete or restore folders there by hand |
+| Live sync relies on recursive `fs.watch` (Windows/macOS, Linux on recent Node); network drives may not report changes | Use the explorer's refresh button |
 | No import from judge pages | Competitive Companion (last phase) |
 
 ## Development

@@ -52,16 +52,17 @@ export default definePlugin({
 
 | Member | What it gives you |
 |---|---|
-| `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta`, `setBuffer`, `save`, `createFile`/`renameFile`/`deleteFile`, `addTest`/`updateTest`/`removeTest`/`duplicateTest`/`moveTest` |
+| `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta(patch, id?)`, `renameProblem`/`moveProblem`/`deleteProblem`/`restoreProblem`, `setBuffer`, `save`, `createFile`/`renameFile`/`deleteFile`, `addTest`/`updateTest`/`removeTest`/`duplicateTest`/`moveTest` |
 | `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()`, `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
 | `panels` | `register`, `open`, `close`, `toggle`, `useIsOpen`, `list` |
 | `commands` | `register` (with optional `keybinding`), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
 | `layout` | `registerPreset({ id, name, panels })`, `applyPreset`, `listPresets`, `saveCurrent(name)`, `deleteSaved`, `reset` |
 | `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive })` — all promise-based |
+| `library` | templates & snippets: `list(kind)`, `use(kind)` (hook), `save`, `create`, `rename`, `remove` |
 | `toolbar` / `statusBar` | `register({ id, order, component })` (status bar also takes `align`) |
 | `events` | `on`/`emit` for `CoreEvents` (augmentable) |
-| `notify` | toasts |
+| `notify` | toasts, optionally with an action button: `notify.success(msg, desc, { label: "Undo", run })` |
 | `theme` | resolved `"dark" \| "light"` (`get`/`use`) |
 | `plugins` | list of loaded plugins |
 | `rpc<T>()` | typed Hono client for this plugin's server routes |
@@ -75,7 +76,11 @@ the selector re-renders forever — derive in the component (or `useMemo`) inste
 Commands other plugins can call (the palette, Ctrl+Shift+P, lists them all): `runner.runAll`,
 `runner.runCustom`, `workspace.save`, `workspace.newScratch`, `workspace.newProblem`, `editor.newFile(name?)`,
 `editor.renameFile(name?)`, `editor.deleteFile(name?)`, `editor.revealLine(line, col)`, `editor.focus`,
-`tests.add`, `tests.import`, `settings.open`, `keybindings.open`, `layout.preset.<id>`, `view.toggle.<panelId>`.
+`tests.add`, `tests.import`, `settings.open`, `keybindings.open`, `layout.preset.<id>`, `view.toggle.<panelId>`,
+`problems.rename|move|delete|copyPath(id?)`, `problems.mark.<status>`, `snippets.insert`, `editor.insertText(text)`, `library.open`.
+
+Events worth knowing: `problems:changed` (files changed on disk, any source) and `problem:reloaded`
+(the open problem was refreshed from disk).
 
 Registering a command with an existing id replaces it — `plugins/format` uses this to wrap
 `workspace.save` with format-on-save. Pass the original `defaultKeybinding` when you do.
@@ -137,8 +142,9 @@ Settings used by both halves can live in a shared module (see `plugins/format/sr
 pass them to `settings` on the server and to `ctx.settings.contribute()` on the web side.
 
 Server `ctx`: `settings` (get/getRaw/all), `problems` (list/get/create/createScratch/updateMeta/
-writeFile/writeTests/dir/root), `runner` (compile/exec), `on(event)` for `ServerEvents`
-(`problem:created`, `problem:updated`, `compile:done`, `settings:changed`), `dataDir`, `log`.
+writeFile/writeTests/createFile/deleteFile/renameFile/move/trash/restore/dir/root), `library`
+(list/read/save), `runner` (compile/exec), `on(event)` for `ServerEvents` (`problem:created`,
+`problem:updated`, `compile:done`, `settings:changed`, `problems:changed`), `dataDir`, `log`.
 `setup` may start its own listeners (e.g. the planned Competitive Companion receiver).
 
 See `plugins/toolchain` and `plugins/format` for complete small examples of both halves.

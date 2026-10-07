@@ -1,4 +1,4 @@
-import { Code2, FolderTree, Info, Keyboard, ListChecks, Settings, SquareTerminal, Terminal } from "lucide-react";
+import { BookMarked, Code2, FolderTree, Info, Keyboard, ListChecks, Settings, SquareTerminal, Terminal } from "lucide-react";
 import { type PanelContribution, definePlugin } from "@cp-ide/plugin-api/web";
 import { EditorPanel, deleteFile, focusEditor, installDiagnostics, newFile, renameFile, revealLine } from "./editor/EditorPanel.tsx";
 import { TestsPanel, importTestFiles } from "./tests/TestsPanel.tsx";
@@ -11,6 +11,9 @@ import { KeybindingsPanel } from "./settings/KeybindingsPanel.tsx";
 import { openNewProblemDialog } from "./chrome/NewProblemDialog.tsx";
 import { LanguageStatus, NewMenu, RootStatus, RunButton, SaveStatus, TestsStatus } from "./chrome/items.tsx";
 import { applyLayout, commandPalette, deleteLayout, quickOpen, saveLayout } from "./chrome/palette.ts";
+import { copyPath, deleteProblem, moveProblem, renameProblem } from "./explorer/actions.ts";
+import { LibraryPanel } from "./library/LibraryPanel.tsx";
+import { insertText, pickSnippet, registerSnippetCompletions } from "./library/snippets.ts";
 
 /**
  * The built-in tools. Everything here goes through the public plugin API — a third-party
@@ -33,6 +36,7 @@ export default definePlugin({
       { id: "core.custom", title: "Custom Input", icon: SquareTerminal, component: CustomInputPanel, placement: "bottom", defaultOpen: true, order: 1, keybinding: "alt+4" },
       { id: "core.settings", title: "Settings", icon: Settings, component: SettingsPanel, placement: "center", order: 10 },
       { id: "core.keybindings", title: "Keyboard Shortcuts", icon: Keyboard, component: KeybindingsPanel, placement: "center", order: 11 },
+      { id: "core.library", title: "Templates & Snippets", icon: BookMarked, component: LibraryPanel, placement: "center", order: 12 },
     ];
 
     for (const { keybinding, ...panel } of panels) {
@@ -92,6 +96,24 @@ export default definePlugin({
     ctx.commands.register({ id: "editor.newFile", title: "New file in problem…", category: "File", run: (name?: string) => newFile(ctx, name) });
     ctx.commands.register({ id: "editor.renameFile", title: "Rename file…", category: "File", keybinding: "f2", run: (name?: string) => renameFile(ctx, name) });
     ctx.commands.register({ id: "editor.deleteFile", title: "Delete file…", category: "File", run: (name?: string) => deleteFile(ctx, name) });
+    ctx.commands.register({ id: "problems.rename", title: "Rename problem…", category: "Problem", run: (id?: string) => renameProblem(ctx, id) });
+    ctx.commands.register({ id: "problems.move", title: "Move problem to…", category: "Problem", run: (id?: string) => moveProblem(ctx, id) });
+    ctx.commands.register({ id: "problems.delete", title: "Delete problem…", category: "Problem", run: (id?: string) => deleteProblem(ctx, id) });
+    ctx.commands.register({ id: "problems.copyPath", title: "Copy problem folder path", category: "Problem", run: (id?: string) => copyPath(ctx, id) });
+    for (const status of ["todo", "attempted", "solved"] as const) {
+      ctx.commands.register({
+        id: `problems.mark.${status}`,
+        title: `Mark as ${status === "todo" ? "to do" : status}`,
+        category: "Problem",
+        run: () => ctx.workspace.updateMeta({ status }),
+      });
+    }
+
+    // ---- library ----
+    ctx.commands.register({ id: "library.open", title: "Templates & snippets", category: "Preferences", run: () => ctx.panels.open("core.library") });
+    ctx.commands.register({ id: "snippets.insert", title: "Insert snippet…", category: "Editor", keybinding: "ctrl+alt+i", run: () => pickSnippet(ctx) });
+    ctx.commands.register({ id: "editor.insertText", title: "Insert text at cursor", category: "Editor", run: (text: string) => insertText(String(text ?? "")) });
+    registerSnippetCompletions(ctx);
 
     // ---- editor ----
     ctx.commands.register({ id: "editor.revealLine", title: "Go to line", category: "Editor", run: (line: number, column?: number) => revealLine(line, column) });

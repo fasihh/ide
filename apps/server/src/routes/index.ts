@@ -1,8 +1,12 @@
 import { Hono } from "hono";
 import { zValidator as zv } from "@hono/zod-validator";
 import { z } from "zod";
+import { streamSSE } from "hono/streaming";
 import {
+  type ServerEvent,
   compileRequestSchema,
+  libraryKindSchema,
+  libraryNameSchema,
   createProblemSchema,
   execRequestSchema,
   languageSchema,
@@ -12,7 +16,7 @@ import {
 import type { Services } from "../services/index.ts";
 
 /** zValidator that reports failures as `{ error: string }` like every other API error. */
-const zValidator = <T extends z.ZodType, Target extends "json" | "query">(target: Target, schema: T) =>
+const zValidator = <T extends z.ZodType, Target extends "json" | "query" | "param">(target: Target, schema: T) =>
   zv(target, schema, (result, c) => {
     if (!result.success) {
       return c.json({ error: result.error.issues.map((i) => `${i.path.join(".") || target}: ${i.message}`).join("; ") }, 400);
@@ -61,6 +65,18 @@ export const problemsRoutes = (s: Services) =>
       await s.problems.renameFile(id, from, to);
       return c.json(await s.problems.get(id));
     })
+    .post(
+      "/move",
+      zValidator("json", idQuery.extend({ name: z.string().optional(), platform: z.string().optional(), group: z.string().optional() })),
+      async (c) => {
+        const { id, ...target } = c.req.valid("json");
+        return c.json(await s.problems.move(id, target));
+      },
+    )
+    .post("/trash", zValidator("json", idQuery), async (c) => c.json({ trashId: await s.problems.trash(c.req.valid("json").id) }))
+    .post("/restore", zValidator("json", z.object({ trashId: z.string().min(1) })), async (c) =>
+      c.json(await s.problems.restore(c.req.valid("json").trashId)),
+    )
     .put("/tests", zValidator("json", idQuery.extend({ tests: z.array(testCaseSchema) })), async (c) => {
       const { id, tests } = c.req.valid("json");
       await s.problems.writeTests(id, tests);
@@ -71,3 +87,48 @@ export const runRoutes = (s: Services) =>
   new Hono()
     .post("/compile", zValidator("json", compileRequestSchema), async (c) => c.json(await s.runner.compile(c.req.valid("json"))))
     .post("/exec", zValidator("json", execRequestSchema), async (c) => c.json(await s.runner.exec(c.req.valid("json"))));
+
+const kindParam = z.object({ kind: libraryKindSchema });
+
+export const libraryRoutes = (s: Services) =>
+  new Hono()
+    .get("/:kind", zValidator("param", kindParam), async (c) => c.json(await s.library.list(c.req.valid("param").kind)))
+    .put("/:kind", zValidator("param", kindParam), zValidator("json", z.object({ name: libraryNameSchema, content: z.string() })), async (c) => {
+      const { name, content } = c.req.valid("json");
+      await s.library.save(c.req.valid("param").kind, name, content);
+      return c.json({ ok: true as const });
+    })
+    .post(
+      "/:kind/create",
+      zValidator("param", kindParam),
+      zValidator("json", z.object({ name: libraryNameSchema, content: z.string().optional() })),
+      async (c) => {
+        const { name, content } = c.req.valid("json");
+        await s.library.create(c.req.valid("param").kind, name, content);
+        return c.json(await s.library.list(c.req.valid("param").kind));
+      },
+    )
+    .post("/:kind/rename", zValidator("param", kindParam), zValidator("json", z.object({ from: libraryNameSchema, to: libraryNameSchema })), async (c) => {
+      const { from, to } = c.req.valid("json");
+      await s.library.rename(c.req.valid("param").kind, from, to);
+      return c.json(await s.library.list(c.req.valid("param").kind));
+    })
+    .post("/:kind/delete", zValidator("param", kindParam), zValidator("json", z.object({ name: libraryNameSchema })), async (c) => {
+      await s.library.remove(c.req.valid("param").kind, c.req.valid("json").name);
+      return c.json(await s.library.list(c.req.valid("param").kind));
+    });
+
+/** Server-sent events (`ServerEvent` JSON in `data`). Not part of the RPC types: use EventSource. */
+export const eventsRoute = (s: Services) =>
+  new Hono().get("/", (c) =>
+    streamSSE(c, async (stream) => {
+      const send = (e: ServerEvent) => void stream.writeSSE({ data: JSON.stringify(e) });
+      const sub = s.events.on("problems:changed", ({ ids }) => send({ type: "problems-changed", ids }));
+      stream.onAbort(() => sub.dispose());
+      while (!stream.aborted) {
+        await stream.writeSSE({ event: "ping", data: "" });
+        await stream.sleep(20_000);
+      }
+      sub.dispose();
+    }),
+  );

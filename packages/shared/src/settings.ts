@@ -175,6 +175,21 @@ export const coreSettings = defineSettings({
     ],
   },
 
+  // Templates
+  "templates.defaultCpp": {
+    section: "Templates",
+    label: "Default C++ template",
+    description: "Template (from the Templates panel) used for new C++ problems and files.",
+    type: "string",
+    default: "main.cpp",
+  },
+  "templates.defaultPython": {
+    section: "Templates",
+    label: "Default Python template",
+    type: "string",
+    default: "main.py",
+  },
+
   // Languages
   "cpp.compiler": { section: "C++", label: "Compiler", type: "string", default: "g++" },
   "cpp.standard": {

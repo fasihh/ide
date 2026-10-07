@@ -10,7 +10,7 @@ import { reportError } from "./notify.ts";
 const LAST_PROBLEM_KEY = "cp-ide.lastProblem";
 const TESTS_SAVE_DELAY = 400;
 
-export const useWorkspace = create<WorkspaceState & { problemsRoot: string }>(() => ({
+export const useWorkspace = create<WorkspaceState>(() => ({
   problems: [],
   problemsLoading: false,
   problemsRoot: "",
@@ -56,11 +56,30 @@ export const workspace: Omit<WorkspaceApi, keyof import("@cp-ide/plugin-api/web"
   async refreshProblems() {
     set({ problemsLoading: true });
     try {
-      const res = await unwrap(api.problems.$get());
-      set({ problems: res.problems, problemsRoot: res.root });
+      await loadProblems();
     } finally {
       set({ problemsLoading: false });
     }
+  },
+
+  renameProblem: (id, name) => relocate(id, { name }),
+  moveProblem: (id, target) => relocate(id, target),
+
+  async deleteProblem(id) {
+    if (get().problem?.id === id) {
+      await workspace.saveAll();
+      if (testsTimer) await flushTests();
+      workspace.closeProblem();
+    }
+    const { trashId } = await unwrap(api.problems.trash.$post({ json: { id } }));
+    await loadProblems();
+    return trashId;
+  },
+
+  async restoreProblem(trashId) {
+    const p = await unwrap(api.problems.restore.$post({ json: { trashId } }));
+    await loadProblems();
+    return p.id;
   },
 
   async openProblem(id) {
@@ -96,17 +115,20 @@ export const workspace: Omit<WorkspaceApi, keyof import("@cp-ide/plugin-api/web"
     return problem;
   },
 
-  async updateMeta(patch) {
-    const p = get().problem;
-    if (!p) return;
-    const meta = await unwrap(api.problems.meta.$patch({ json: { id: p.id, patch } }));
-    if (patch.language && meta.mainFile !== p.meta.mainFile) {
-      // A new main file may have been created from a template — reload from disk.
-      await workspace.openProblem(p.id);
-    } else {
-      setProblem((x) => ({ ...x, meta }));
+  async updateMeta(patch, id) {
+    const open = get().problem;
+    const target = id ?? open?.id;
+    if (!target) return;
+    const meta = await unwrap(api.problems.meta.$patch({ json: { id: target, patch } }));
+    if (open?.id === target) {
+      if (patch.language && meta.mainFile !== open.meta.mainFile) {
+        // A new main file may have been created from a template — reload from disk.
+        await workspace.openProblem(target);
+      } else {
+        setProblem((x) => ({ ...x, meta }));
+      }
     }
-    set((s) => ({ problems: s.problems.map((x) => (x.id === p.id ? { ...meta, id: p.id } : x)) }));
+    set((s) => ({ problems: s.problems.map((x) => (x.id === target ? { ...meta, id: target } : x)) }));
   },
 
   setActiveFile(file) {
@@ -210,6 +232,76 @@ export const workspace: Omit<WorkspaceApi, keyof import("@cp-ide/plugin-api/web"
     scheduleTestsSave();
   },
 };
+
+/** Refresh the list without the loading spinner (used for background file-change events). */
+export const refreshProblemsQuietly = () => loadProblems();
+
+async function loadProblems() {
+  const res = await unwrap(api.problems.$get());
+  set({ problems: res.problems, problemsRoot: res.root });
+}
+
+/** Rename/move via the server; the open problem keeps its buffers and just changes id. */
+async function relocate(id: string, target: { name?: string; platform?: string; group?: string }) {
+  const isOpen = get().problem?.id === id;
+  if (isOpen) {
+    await workspace.saveAll();
+    if (testsTimer) await flushTests();
+  }
+  const p = await unwrap(api.problems.move.$post({ json: { id, ...target } }));
+  if (isOpen && get().problem?.id === id) {
+    set({ problem: p });
+    localStorage.setItem(LAST_PROBLEM_KEY, p.id);
+  }
+  await loadProblems();
+  return p.id;
+}
+
+/**
+ * The open problem's files changed on disk (externally or by our own save). Pull the fresh copy:
+ * clean buffers take the disk content, dirty ones keep the user's edits; tests are replaced unless
+ * a local tests save is pending.
+ */
+export async function reconcileFromDisk(ids: string[]) {
+  const open = get().problem;
+  if (!open || !ids.includes(open.id)) return;
+  let fresh: Problem;
+  try {
+    fresh = await unwrap(api.problems.detail.$get({ query: { id: open.id } }));
+  } catch {
+    return; // deleted or moved away; the list refresh shows it
+  }
+  const cur = get();
+  if (cur.problem?.id !== open.id) return;
+  let changed = false;
+  const buffers: WorkspaceState["buffers"] = {};
+  for (const f of fresh.files) {
+    const prev = cur.buffers[f.name];
+    if (!prev) {
+      buffers[f.name] = { content: f.content, saved: f.content };
+      changed = true;
+    } else if (prev.content !== prev.saved) {
+      buffers[f.name] = { content: prev.content, saved: f.content };
+      changed ||= prev.saved !== f.content;
+    } else {
+      buffers[f.name] = { content: f.content, saved: f.content };
+      changed ||= prev.content !== f.content;
+    }
+  }
+  // Files removed on disk disappear unless they hold unsaved edits.
+  for (const [name, b] of Object.entries(cur.buffers)) {
+    if (buffers[name]) continue;
+    if (b.content !== b.saved) buffers[name] = b;
+    else changed = true;
+  }
+  const tests = testsTimer ? cur.problem!.tests : fresh.tests;
+  changed ||= JSON.stringify(tests) !== JSON.stringify(cur.problem!.tests) || JSON.stringify(fresh.meta) !== JSON.stringify(cur.problem!.meta);
+  if (!changed) return;
+  const problem = { ...fresh, tests };
+  const activeFile = cur.activeFile && buffers[cur.activeFile] ? cur.activeFile : fresh.meta.mainFile;
+  set({ problem, buffers, activeFile });
+  events.emit("problem:reloaded", { problem });
+}
 
 /** Replace the open problem with a fresh copy from the server, keeping unsaved edits. */
 function applyProblem(problem: Problem) {

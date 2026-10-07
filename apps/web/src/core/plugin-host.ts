@@ -11,6 +11,7 @@ import { api, unwrap } from "../api.ts";
 import { formatKeybinding, listCommands, recordKeybinding, setKeybinding, useCommandList } from "./keybindings.ts";
 import { layout, useLayout } from "./layout.ts";
 import { uiApi } from "./ui.ts";
+import { libraryApi } from "./library.ts";
 import { notify } from "./notify.ts";
 import { events, registry } from "./registry.ts";
 import { runnerApi } from "./runner.ts";
@@ -84,6 +85,7 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
       deleteSaved: layout.deleteSaved,
       reset: layout.reset,
     },
+    library: libraryApi,
     ui: uiApi,
     notify,
     theme: themeApi,

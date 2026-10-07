@@ -17,6 +17,8 @@ import type {
   ExecRequest,
   ExecResult,
   Language,
+  LibraryItem,
+  LibraryKind,
   Problem,
   ProblemMetaPatch,
   ProblemSummary,
@@ -48,6 +50,10 @@ export interface CoreEvents {
   "run:test-finished": { testId: string; result: ExecResult };
   "run:finished": { results: Record<string, ExecResult> };
   "settings:changed": { key: string; value: unknown };
+  /** Files under the problems root changed (from the app or another program). */
+  "problems:changed": { ids: string[] };
+  /** The open problem was refreshed from disk after an external change. */
+  "problem:reloaded": { problem: Problem };
 }
 
 export interface EventsApi {
@@ -63,6 +69,8 @@ export type Buffer = { content: string; saved: string };
 export interface WorkspaceState {
   problems: ProblemSummary[];
   problemsLoading: boolean;
+  /** Absolute path of the problems root (from settings, resolved by the server). */
+  problemsRoot: string;
   /** The open problem. Its `files` reflect what is on disk; live edits are in `buffers`. */
   problem: Problem | null;
   buffers: Record<string, Buffer>;
@@ -99,7 +107,15 @@ export interface WorkspaceApi extends StoreHandle<WorkspaceState> {
   closeProblem(): void;
   createProblem(input: CreateProblemInput): Promise<Problem>;
   createScratch(language?: Language): Promise<Problem>;
-  updateMeta(patch: ProblemMetaPatch): Promise<void>;
+  /** Update a problem's metadata (default: the open problem). */
+  updateMeta(patch: ProblemMetaPatch, id?: string): Promise<void>;
+  /** Rename a problem (its folder is renamed too). Returns the new id. */
+  renameProblem(id: string, name: string): Promise<string>;
+  /** Move a problem to another platform / contest. Returns the new id. */
+  moveProblem(id: string, target: { platform?: string; group?: string }): Promise<string>;
+  /** Move a problem to the trash. Returns a trash id for `restoreProblem`. */
+  deleteProblem(id: string): Promise<string>;
+  restoreProblem(trashId: string): Promise<string>;
 
   setActiveFile(file: string): void;
   /** Update an open buffer (marks it dirty; auto save picks it up). */
@@ -272,10 +288,26 @@ export interface UiApi {
   confirm(options: { title: string; message?: string; confirmLabel?: string; destructive?: boolean }): Promise<boolean>;
 }
 
+export interface NotifyAction {
+  label: string;
+  run: () => unknown;
+}
+
 export interface NotifyApi {
-  info(message: string, description?: string): void;
-  success(message: string, description?: string): void;
-  error(message: string, description?: string): void;
+  info(message: string, description?: string, action?: NotifyAction): void;
+  success(message: string, description?: string, action?: NotifyAction): void;
+  error(message: string, description?: string, action?: NotifyAction): void;
+}
+
+/** Templates (new problems/files start from them) and snippets (inserted into the editor). */
+export interface LibraryApi {
+  list(kind: LibraryKind): Promise<LibraryItem[]>;
+  /** React hook: cached list, loaded on first use and refreshed after changes. */
+  use(kind: LibraryKind): LibraryItem[] | undefined;
+  save(kind: LibraryKind, name: string, content: string): Promise<void>;
+  create(kind: LibraryKind, name: string, content?: string): Promise<void>;
+  rename(kind: LibraryKind, from: string, to: string): Promise<void>;
+  remove(kind: LibraryKind, name: string): Promise<void>;
 }
 
 export interface PluginInfo {
@@ -302,6 +334,7 @@ export interface WebPluginContext {
   readonly toolbar: { register(item: UiItemContribution): Disposable };
   readonly events: EventsApi;
   readonly layout: LayoutApi;
+  readonly library: LibraryApi;
   readonly ui: UiApi;
   readonly notify: NotifyApi;
   /** The resolved color theme ("system" already applied). `use` is a React hook. */

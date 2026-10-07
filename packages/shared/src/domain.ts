@@ -8,6 +8,9 @@ export const LANGUAGE_INFO: Record<Language, { label: string; ext: string; monac
   python: { label: "Python", ext: "py", monaco: "python" },
 };
 
+export const compareModeSchema = z.enum(["token", "exact", "float"]);
+export type CompareMode = z.infer<typeof compareModeSchema>;
+
 export const problemStatusSchema = z.enum(["todo", "attempted", "solved"]);
 export type ProblemStatus = z.infer<typeof problemStatusSchema>;
 
@@ -23,6 +26,9 @@ export const problemMetaSchema = z.object({
   timeLimitMs: z.number().int().positive().optional(),
   memoryLimitMb: z.number().int().positive().optional(),
   interactive: z.boolean().optional(),
+  /** Overrides `runner.compareMode` / `runner.floatEpsilon` for this problem. */
+  compareMode: compareModeSchema.optional(),
+  floatEpsilon: z.number().nonnegative().optional(),
   status: problemStatusSchema,
   tags: z.array(z.string()),
   notes: z.string().optional(),
@@ -61,18 +67,28 @@ export const createProblemSchema = z.object({
   timeLimitMs: z.number().int().positive().optional(),
   memoryLimitMb: z.number().int().positive().optional(),
   tests: z.array(z.object({ input: z.string(), expected: z.string() })).optional(),
+  /** Template file name from the template library (default: the language's default template). */
+  template: z.string().optional(),
 });
 export type CreateProblemInput = z.input<typeof createProblemSchema>;
 
 export const problemMetaPatchSchema = problemMetaSchema
-  .pick({ name: true, url: true, timeLimitMs: true, memoryLimitMb: true, status: true, tags: true, notes: true, language: true })
+  .pick({
+    name: true,
+    url: true,
+    timeLimitMs: true,
+    memoryLimitMb: true,
+    status: true,
+    tags: true,
+    notes: true,
+    language: true,
+    compareMode: true,
+    floatEpsilon: true,
+  })
   .partial();
 export type ProblemMetaPatch = z.infer<typeof problemMetaPatchSchema>;
 
 // ---------- running ----------
-
-export const compareModeSchema = z.enum(["token", "exact", "float"]);
-export type CompareMode = z.infer<typeof compareModeSchema>;
 
 /**
  * - AC/WA: compared against expected output
@@ -113,6 +129,7 @@ export const execRequestSchema = z.object({
   expected: z.string().optional(),
   timeLimitMs: z.number().int().positive().optional(),
   compareMode: compareModeSchema.optional(),
+  floatEpsilon: z.number().nonnegative().optional(),
 });
 export type ExecRequest = z.infer<typeof execRequestSchema>;
 
@@ -123,3 +140,17 @@ export const compileRequestSchema = z.object({
   fileName: z.string().optional(),
 });
 export type CompileRequest = z.infer<typeof compileRequestSchema>;
+
+// ---------- library (templates & snippets) ----------
+
+export const libraryKindSchema = z.enum(["templates", "snippets"]);
+export type LibraryKind = z.infer<typeof libraryKindSchema>;
+/** File name of a template/snippet, e.g. `main.cpp`, `dsu.cpp`, `fast_io.py`. */
+export const libraryNameSchema = z.string().regex(/^[\w.-]+\.(cpp|py)$/, "Use a name like dsu.cpp or fast_io.py");
+export type LibraryItem = { name: string; language: Language; content: string };
+
+// ---------- server → web events (SSE at /api/events) ----------
+
+export type ServerEvent =
+  /** Files under the problems root changed (by the app or externally). `ids` are affected problem ids. */
+  { type: "problems-changed"; ids: string[] };

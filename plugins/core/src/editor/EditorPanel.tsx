@@ -43,6 +43,11 @@ export function revealLine(line: number, column = 1) {
   current.focus();
 }
 
+/** The last focused code editor (not the library editor). */
+export function currentEditor() {
+  return current;
+}
+
 export function focusEditor() {
   current?.focus();
 }
