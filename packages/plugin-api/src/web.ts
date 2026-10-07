@@ -230,6 +230,8 @@ export interface OverlayContribution {
 export interface ServicesApi {
   provide<T extends object>(name: string, service: T): Disposable;
   get<T extends object>(name: string): T | undefined;
+  /** Call `callback` once the service exists (immediately if it already does), whatever the activation order. */
+  whenAvailable<T extends object>(name: string, callback: (service: T) => void): Disposable;
 }
 
 export interface StatusBarContribution extends UiItemContribution {

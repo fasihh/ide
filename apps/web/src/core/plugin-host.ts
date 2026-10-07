@@ -78,6 +78,8 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
     services: {
       provide: (name, service) => disposables.add(serviceRegistry.provide(name, service)),
       get: <T extends object>(name: string) => serviceRegistry.get(name) as T | undefined,
+      whenAvailable: <T extends object>(name: string, cb: (service: T) => void) =>
+        disposables.add(serviceRegistry.whenAvailable(name, cb as (service: object) => void)),
     },
     events: {
       on: (event, handler) => disposables.add(events.on(event, handler)),

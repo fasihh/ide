@@ -10,19 +10,20 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | No memory limit and no peak-memory reporting | Needs Windows Job Objects / Linux prlimit (Phase 5) |
 | Times are wall clock and include process start (~10–30 ms on Windows) | Good enough for spotting TLE; CPU time measurement would need native help |
 | First run of a fresh `.exe` is slow on Windows (antivirus scan) | Mitigated by a warm-up launch after compiling. Adding `~/.cp-ide/cache` to Defender exclusions removes it entirely |
-| Interactive problems are not supported | Phase 4 (interactor) |
-| Only token / float / exact comparison; no custom checkers | Phase 4 (testlib-style checker) |
+| Interactive runs measure wall time from start until the solution exits (judge time included) | Fine for spotting TLE |
+| No testlib.h bundled — interactors using it need the header on the include path | Plain C++/Python interactors (the templates) work as is |
+| Only token / float / exact comparison; no custom checkers | On hold (testlib-style checker) |
 | Compile cache (`~/.cp-ide/cache`) is never pruned | Safe to delete manually any time |
 
 ## Editor
 
 | Limitation | Notes / planned fix |
 |---|---|
-| No C++ IntelliSense (syntax highlighting + word completion only) | clangd over LSP (Phase 5) |
+| No C++/Python IntelliSense (syntax highlighting, word + snippet completion only) | LSP phase — see LSP_PLAN.md |
 | Compiler squiggles disappear on reload | Re-run to get them back |
 | Formatting needs `clang-format` / `black` installed (not bundled) | `pip install clang-format black`, or point Settings → Formatting at your own command |
 | Saved layouts live in browser localStorage (per browser profile), not in settings.json | Could move to the server later |
-| Snippets are inserted as plain text (no tab stops / placeholders) | Could adopt Monaco snippet syntax later |
+| Snippets use Monaco snippet syntax, so a literal `$` must be written `\$` | Documented in the Templates & Snippets panel |
 
 ## Layout & UI
 

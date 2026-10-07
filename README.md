@@ -42,7 +42,7 @@ All of these can be changed in **Keyboard Shortcuts** (Ctrl+Alt+K).
 | Alt+N / Alt+Shift+N | New scratch problem / new problem |
 | F2 | Rename the current file |
 | Alt+T | Add test |
-| Ctrl+Alt+I | Insert snippet |
+| Ctrl+Alt+I · `@` in the palette | Insert snippet (Tab moves between placeholders) |
 | Ctrl+B / Ctrl+J | Toggle problems / output panel |
 | Alt+1…4 | Code / Tests / Problem / Custom Input panel |
 | Ctrl+Alt+1…4 | Default / Focus / Zen / Everything layout |

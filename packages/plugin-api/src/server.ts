@@ -14,6 +14,7 @@ import type {
   CoreSettings,
   CreateProblemInput,
   ExecRequest,
+  InteractRequest,
   ExecResult,
   Problem,
   ProblemMetaPatch,
@@ -71,6 +72,7 @@ export interface LibraryService {
 export interface RunnerService {
   compile(req: CompileRequest): Promise<CompileResult>;
   exec(req: ExecRequest): Promise<ExecResult>;
+  interact(req: InteractRequest): Promise<ExecResult>;
 }
 
 export interface ServerPluginContext {

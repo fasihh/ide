@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Play, Plus } from "lucide-react";
 import type { PanelProps } from "@cp-ide/plugin-api/web";
 import { Badge, Button, Kbd, Textarea } from "@cp-ide/ui";
+import { Transcript } from "./Transcript.tsx";
 
 const key = (id: string) => `cp-ide.customInput.${id}`;
 
@@ -17,6 +18,7 @@ export function readCustomInput(problemId: string) {
 export function CustomInputPanel({ ctx }: PanelProps) {
   const problemId = ctx.workspace.use((s) => s.problem?.id);
   const state = ctx.runner.use((s) => s.custom);
+  const interactive = ctx.workspace.use((s) => !!s.problem?.meta.interactive);
   const [input, setInput] = useState("");
 
   useEffect(() => setInput(problemId ? readCustomInput(problemId) : ""), [problemId]);
@@ -29,7 +31,7 @@ export function CustomInputPanel({ ctx }: PanelProps) {
     <div className="flex h-full min-h-0">
       <div className="@container flex w-1/2 min-w-0 flex-col border-r">
         <div className="flex h-8 shrink-0 items-center gap-1 border-b px-2">
-          <span className="text-[0.6875rem] font-medium text-muted-foreground">stdin</span>
+          <span className="text-[0.6875rem] font-medium text-muted-foreground">{interactive ? "judge data" : "stdin"}</span>
           <div className="flex-1" />
           <Button
             variant="ghost"
@@ -62,15 +64,22 @@ export function CustomInputPanel({ ctx }: PanelProps) {
       </div>
       <div className="flex w-1/2 min-w-0 flex-col">
         <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2 text-[0.6875rem] text-muted-foreground">
-          <span className="font-medium">stdout</span>
+          <span className="font-medium">{interactive ? "conversation" : "stdout"}</span>
           {result && result.verdict !== "RAN" && <Badge variant={result.verdict}>{result.verdict}</Badge>}
           {result && result.verdict !== "CE" && <span className="font-mono">{result.timeMs} ms</span>}
           {result?.message && <span className="truncate text-verdict-re">{result.message}</span>}
         </div>
         <div className="min-h-0 flex-1 overflow-auto">
-          <pre className="px-2 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-            {busy ? <span className="text-muted-foreground">Running…</span> : (result?.stdout ?? <span className="text-muted-foreground">Output appears here.</span>)}
-          </pre>
+          {interactive && result && !busy ? (
+            <Transcript result={result} className="m-1 max-h-none border-0" />
+          ) : (
+            <pre className="px-2 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+              {busy ? <span className="text-muted-foreground">Running…</span> : (result?.stdout ?? <span className="text-muted-foreground">Output appears here.</span>)}
+            </pre>
+          )}
+          {interactive && result?.interactorStderr && (
+            <pre className="border-t px-2 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-verdict-tle">{result.interactorStderr}</pre>
+          )}
           {result?.stderr && (
             <pre className="border-t px-2 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">{result.stderr}</pre>
           )}

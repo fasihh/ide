@@ -13,7 +13,7 @@ import { LanguageStatus, NewMenu, RootStatus, RunButton, SaveStatus, TestsStatus
 import { applyLayout, deleteLayout, saveLayout } from "./chrome/layouts.ts";
 import { copyPath, deleteProblem, moveProblem, renameProblem } from "./explorer/actions.ts";
 import { LibraryPanel } from "./library/LibraryPanel.tsx";
-import { insertText, pickSnippet, registerSnippetCompletions } from "./library/snippets.ts";
+import { insertText, pickSnippet, registerSnippetCompletions, registerSnippetPaletteMode } from "./library/snippets.ts";
 
 /**
  * The built-in tools. Everything here goes through the public plugin API — a third-party
@@ -112,6 +112,7 @@ export default definePlugin({
     ctx.commands.register({ id: "snippets.insert", title: "Insert snippet…", category: "Editor", keybinding: "ctrl+alt+i", run: () => pickSnippet(ctx) });
     ctx.commands.register({ id: "editor.insertText", title: "Insert text at cursor", category: "Editor", run: (text: string) => insertText(String(text ?? "")) });
     registerSnippetCompletions(ctx);
+    registerSnippetPaletteMode(ctx);
 
     // ---- editor ----
     ctx.commands.register({ id: "editor.revealLine", title: "Go to line", category: "Editor", run: (line: number, column?: number) => revealLine(line, column) });

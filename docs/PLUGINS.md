@@ -53,7 +53,7 @@ export default definePlugin({
 | Member | What it gives you |
 |---|---|
 | `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta(patch, id?)`, `renameProblem`/`moveProblem`/`deleteProblem`/`restoreProblem`, `setBuffer`, `save`, `createFile`/`renameFile`/`deleteFile`, `addTest`/`updateTest`/`removeTest`/`duplicateTest`/`moveTest` |
-| `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()`, `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
+| `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()` (main + interactor for interactive problems), `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
 | `panels` | `register`, `open`, `close`, `toggle`, `isOpen`, `useIsOpen`, `list` |
 | `commands` | `register` (with optional `keybinding`), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
@@ -62,7 +62,7 @@ export default definePlugin({
 | `library` | templates & snippets: `list(kind)`, `use(kind)` (hook), `save`, `create`, `rename`, `remove` |
 | `toolbar` / `statusBar` | `register({ id, order, component })` (status bar also takes `align`) |
 | `overlays` | `register({ id, component })` — rendered at the app root (palettes, dialogs, HUDs) |
-| `services` | `provide(name, obj)` / `get<T>(name)` — share an API with other plugins |
+| `services` | `provide(name, obj)` / `get<T>(name)` / `whenAvailable<T>(name, cb)` — share an API with other plugins (order-independent with `whenAvailable`) |
 | `events` | `on`/`emit` for `CoreEvents` (augmentable) |
 | `notify` | toasts, optionally with an action button: `notify.success(msg, desc, { label: "Undo", run })` |
 | `theme` | resolved `"dark" \| "light"` (`get`/`use`) |
@@ -121,8 +121,8 @@ ctx.services.get<PaletteService>("palette")?.registerProvider({
 Items are fuzzy-filtered by `label` (then `description`/`keywords`) unless the provider sets
 `filter: false`. An item's `run(palette)` can call `palette.setQuery(...)` with `keepOpen: true` to
 chain modes. Add `"@cp-ide/plugin-palette": "workspace:*"` to your plugin's dependencies for the types.
-Plugins activate in order (required first, then by id), so look the service up inside `activate` of a
-plugin whose id sorts after `palette`, or lazily when needed.
+Plugins activate in order (required first, then by id), so use `ctx.services.whenAvailable("palette", …)`
+to register regardless of order (the core plugin's `@` snippets mode does this).
 
 ### Settings
 
@@ -173,7 +173,7 @@ pass them to `settings` on the server and to `ctx.settings.contribute()` on the 
 
 Server `ctx`: `settings` (get/getRaw/all), `problems` (list/get/create/createScratch/updateMeta/
 writeFile/writeTests/createFile/deleteFile/renameFile/move/trash/restore/dir/root), `library`
-(list/read/save), `runner` (compile/exec), `on(event)` for `ServerEvents` (`problem:created`,
+(list/read/save), `runner` (compile/exec/interact), `on(event)` for `ServerEvents` (`problem:created`,
 `problem:updated`, `compile:done`, `settings:changed`, `problems:changed`), `dataDir`, `log`.
 `setup` may start its own listeners (e.g. the planned Competitive Companion receiver).
 

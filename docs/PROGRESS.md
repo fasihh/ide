@@ -3,6 +3,35 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — Phase 4 complete (interactive problems & snippets)
+
+**Interactive problems**
+- `runner/interact.ts`: spawns solution + interactor with stdout/stdin cross-connected, records the
+  transcript (merged per direction, 256 KB cap), kills both at TL × kill factor, gives the solution 1 s
+  to exit after the interactor finishes. `RunnerService.interact` maps exit codes (0 AC, 1 WA, 2 PE→WA,
+  3 judge failure, other = interactor crash) and spawn/TLE/OLE/RE cases. Route `POST /api/run/interact`.
+- Problem meta `interactive` + `interactor`; turning interactive on creates the interactor from your
+  library template (`interactor.cpp`/`.py`) or the built-in guess-the-number example.
+- Web runner builds main + interactor (`build()`), runs tests/custom input through `interact`.
+- UI: Interactive switch + interactor picker (Problem panel), conversation view (`tests/Transcript.tsx`)
+  in Tests and Custom Input, judge message as the verdict reason.
+
+**Snippets**
+- `@cp-ide/shared` `parseSnippet` / `snippetPreview` (+ tests); snippets are inserted through Monaco's
+  snippet controller (Tab stops, linked placeholders, auto-indent); completion items use
+  `InsertAsSnippet` with description + preview.
+- Palette `@` mode registered from the core plugin via the new `ctx.services.whenAvailable`.
+- Library seeding is now per name (`.seeded` holds a JSON list; an old empty marker counts as the first
+  release), so new built-ins (segtree, modint, dijkstra, sieve, dsu.py) appear once in existing installs.
+
+**Verified** — browser: interactive problem end to end (2 AC with "correct after N queries", 1 WA with
+the judge's reason, conversation rendered), palette `@seg` → insert → linked placeholder edits + Tab.
+Tests: 25 passing (new: interactive AC/WA/TLE/no-flush deadlock/interactor crash/Python solution/
+interactor creation, seeding upgrade, snippet parsing).
+
+**Planning** — Playground phase (next) and LSP phase written up (PLAN.md, LSP_PLAN.md); stress tester
+and custom checkers on hold.
+
 ## 2026-10-07 — Fix: editor suggestions offset from the cursor
 
 dockview panel overlays use `transform: translate3d(0,0,0)` / `will-change: transform` /

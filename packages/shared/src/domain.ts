@@ -25,7 +25,9 @@ export const problemMetaSchema = z.object({
   /** Overrides `runner.timeLimitMs` when set. */
   timeLimitMs: z.number().int().positive().optional(),
   memoryLimitMb: z.number().int().positive().optional(),
+  /** Interactive problem: tests run the solution against `interactor` (a file in the problem folder). */
   interactive: z.boolean().optional(),
+  interactor: z.string().optional(),
   /** Overrides `runner.compareMode` / `runner.floatEpsilon` for this problem. */
   compareMode: compareModeSchema.optional(),
   floatEpsilon: z.number().nonnegative().optional(),
@@ -84,6 +86,8 @@ export const problemMetaPatchSchema = problemMetaSchema
     language: true,
     compareMode: true,
     floatEpsilon: true,
+    interactive: true,
+    interactor: true,
   })
   .partial();
 export type ProblemMetaPatch = z.infer<typeof problemMetaPatchSchema>;
@@ -111,6 +115,9 @@ export type DiffInfo = {
   actualToken: string | null;
 };
 
+/** One chunk of an interactive run's conversation, in order. */
+export type TranscriptEntry = { from: "solution" | "interactor"; text: string };
+
 export type ExecResult = {
   verdict: Verdict;
   timeMs: number;
@@ -120,6 +127,11 @@ export type ExecResult = {
   /** Human readable explanation for RE/TLE/OLE (e.g. "Stack overflow"). */
   message?: string;
   diff?: DiffInfo;
+  /** Interactive runs: what each side wrote to the other (capped). */
+  transcript?: TranscriptEntry[];
+  transcriptTruncated?: boolean;
+  /** Interactive runs: the interactor's stderr (its verdict message). */
+  interactorStderr?: string;
 };
 
 export const execRequestSchema = z.object({
@@ -132,6 +144,21 @@ export const execRequestSchema = z.object({
   floatEpsilon: z.number().nonnegative().optional(),
 });
 export type ExecRequest = z.infer<typeof execRequestSchema>;
+
+/**
+ * Run a solution against an interactor. The interactor is started testlib-style as
+ * `interactor <input-file> <output-file> <answer-file>`: `input` and `expected` are written to the
+ * input/answer files, its stdin/stdout are wired to the solution's stdout/stdin, and its exit code
+ * is the verdict (0 = AC, 1 = WA, 2 = presentation error, 3 = interactor failure).
+ */
+export const interactRequestSchema = z.object({
+  artifactId: z.string(),
+  interactorArtifactId: z.string(),
+  input: z.string(),
+  expected: z.string().optional(),
+  timeLimitMs: z.number().int().positive().optional(),
+});
+export type InteractRequest = z.infer<typeof interactRequestSchema>;
 
 export const compileRequestSchema = z.object({
   language: languageSchema,

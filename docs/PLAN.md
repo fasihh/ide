@@ -89,23 +89,54 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
 - ✅ Extensible: other plugins add modes through the `palette` service (`PaletteService.registerProvider`)
 - ✅ Plugin API: `ctx.overlays` (app-root components) and `ctx.services` (plugin-to-plugin services)
 
-## Phase 4 — Power tools (each a plugin) ⬜
+## Phase 4 — Interactive problems & snippets ✅
 
-- ⬜ Stress tester: generator + brute + solution in a loop until outputs differ; save the failing case as a test
-- ⬜ Custom checker (testlib-style `checker.cpp`) for multi-answer problems
-- ⬜ Interactive problems (run solution against an interactor)
-- ⬜ Snippet library (dsu, segtree, modint…) with insert command
+- ✅ Interactive problems: per-problem `interactive` flag + interactor file (created from a C++ or Python
+  template, or your own `interactor.cpp`/`.py` in the template library). The runner cross-connects the
+  solution and interactor (testlib convention: `interactor input output answer`, exit 0 = AC, 1 = WA,
+  2 = PE, 3 = judge failure), records the conversation, and reports TLE/RE/OLE for either side
+- ✅ Tests panel and Custom Input show the conversation (judge ↔ you) and the judge's message;
+  Problem panel has the Interactive switch and interactor picker
+- ✅ Snippets: Monaco snippet syntax (`${1:name}` placeholders, Tab between them, `$0`), optional
+  `// @description` / `// @prefix` header, descriptions in autocomplete and the palette (`@` mode),
+  new built-ins (segtree, modint, dijkstra, sieve, dsu.py); new defaults reach existing installs once
 
-## Phase 5 — Nice to have ⬜
+## Phase 5 — Playground ⬜ (next)
+
+A Programiz-style "just run some code" mode — no problem, no tests, a live terminal.
+
+- ⬜ `plugins/playground` with a Playground panel (+ "Playground" layout preset): language picker,
+  editor, Run / Stop, and a terminal (xterm.js) where you type input *while the program runs*
+- ⬜ Streaming execution over WebSocket: start (compile via the existing cache), stdin lines, EOF
+  (Ctrl+D), kill (Ctrl+C); stdout/stderr streamed back; exit code, time and crash explanation at the end
+- ⬜ Plugin API: WebSocket routes for server plugins (`@hono/node-ws`, `ctx.upgradeWebSocket`) — reused
+  later by the language-server phase
+- ⬜ Several playground files (tabs), stored in `~/.cp-ide/playground/`, kept separate from problems;
+  "Save as problem" to promote one
+- ⬜ "Run in terminal" for the open problem's main file too (handy for poking at interactive problems by hand)
+- Notes: programs see pipes, not a real terminal — prompts only show once flushed (C++ `cin.tie(nullptr)`
+  in the CP template disables the automatic flush; Python is run unbuffered). A real PTY (node-pty)
+  could come later.
+
+## Phase 6 — Language intelligence (LSP) ⬜
+
+VS Code-level completions, hover, signature help, diagnostics as you type and navigation via clangd
+(C++) and basedpyright (Python). Full design: [LSP_PLAN.md](LSP_PLAN.md).
+
+## Phase 7 — Nice to have ⬜
 
 - ⬜ Stats dashboard (solved per platform/tag/day)
 - ⬜ Contest mode with timer
-- ⬜ C++ IntelliSense via clangd (monaco-languageclient over WebSocket)
 - ⬜ "Copy & open submit page" helper
 - ⬜ Memory limit enforcement (Windows Job Objects / Linux prlimit) and peak memory reporting
 - ⬜ Desktop wrapper (Tauri) or PWA install
 
-## Phase 6 — Competitive Companion import ⬜ (last, by request)
+## On hold
+
+- ⏸ Stress tester (generator + brute + solution loop, save failing case as a test)
+- ⏸ Custom checkers (testlib-style `checker.cpp` for multi-answer problems)
+
+## Phase 8 — Competitive Companion import ⬜ (last, by request)
 
 Implement as a plugin (`plugins/companion`) — server half starts its own HTTP listener.
 - ⬜ Listen on a configurable port (default **10043**; 27121 is CPH's and clashes when VS Code runs)

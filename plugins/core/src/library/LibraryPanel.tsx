@@ -16,7 +16,7 @@ const KIND_INFO: Record<LibraryKind, { title: string; hint: string; suggestion: 
   },
   snippets: {
     title: "Snippets",
-    hint: "Insert with Ctrl+Alt+I, or type the snippet's name in the editor and pick it from suggestions.",
+    hint: "Insert with Ctrl+Alt+I, @ in the palette, or by typing the name in the editor. Optional first lines: // @description …, // @prefix …. Use ${1:name} placeholders (Tab jumps), $0 for the final cursor.",
     suggestion: "segtree.cpp",
   },
 };

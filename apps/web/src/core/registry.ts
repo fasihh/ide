@@ -61,15 +61,29 @@ export const registry = {
 export const events = new Emitter<CoreEvents>();
 
 const services = new Map<string, object>();
+const waiting = new Map<string, Set<(service: object) => void>>();
 
 /** Plugin-to-plugin service registry (see `ServicesApi`). */
 export const serviceRegistry = {
   provide(name: string, service: object) {
     if (services.has(name)) console.warn(`[services] "${name}" is provided twice; the last one wins`);
     services.set(name, service);
+    for (const cb of waiting.get(name) ?? []) cb(service);
+    waiting.delete(name);
     return toDisposable(() => {
       if (services.get(name) === service) services.delete(name);
     });
   },
   get: (name: string) => services.get(name),
+  whenAvailable(name: string, callback: (service: object) => void) {
+    const existing = services.get(name);
+    if (existing) {
+      callback(existing);
+      return toDisposable(() => {});
+    }
+    let set = waiting.get(name);
+    if (!set) waiting.set(name, (set = new Set()));
+    set.add(callback);
+    return toDisposable(() => set.delete(callback));
+  },
 };

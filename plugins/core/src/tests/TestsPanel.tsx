@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { PanelProps, TestRunState, WebPluginContext } from "@cp-ide/plugin-api/web";
 import type { ExecResult, TestCase } from "@cp-ide/shared";
+import { Transcript } from "./Transcript.tsx";
 import {
   Badge,
   Button,
@@ -134,6 +135,7 @@ function OutputView({ result, expected }: { result: ExecResult; expected: string
 function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: TestCase; index: number; state: TestRunState | undefined }) {
   const open = !useCollapsed((s) => s.ids.has(test.id));
   const count = ctx.workspace.use((s) => s.problem?.tests.length ?? 0);
+  const interactive = ctx.workspace.use((s) => !!s.problem?.meta.interactive);
   const result = state?.status === "done" ? state.result : null;
   const busy = state?.status === "running" || state?.status === "queued";
 
@@ -185,19 +187,30 @@ function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: Te
       {open && (
         <div className="space-y-2 border-t px-2 pt-1.5 pb-2">
           <div>
-            <FieldLabel>Input</FieldLabel>
-            <Textarea className={areaClass} value={test.input} onChange={(e) => ctx.workspace.updateTest(test.id, { input: e.target.value })} />
-          </div>
-          <div>
-            <FieldLabel>Expected output</FieldLabel>
+            <FieldLabel>{interactive ? "Judge data (given to the interactor as its input file)" : "Input"}</FieldLabel>
             <Textarea
               className={areaClass}
-              placeholder="Leave empty to just see the output"
+              placeholder={interactive ? "e.g. 1000 777 — hidden values only the interactor reads" : undefined}
+              value={test.input}
+              onChange={(e) => ctx.workspace.updateTest(test.id, { input: e.target.value })}
+            />
+          </div>
+          <div>
+            <FieldLabel>{interactive ? "Answer file (optional, for the interactor)" : "Expected output"}</FieldLabel>
+            <Textarea
+              className={areaClass}
+              placeholder={interactive ? "Passed to the interactor as its answer file" : "Leave empty to just see the output"}
               value={test.expected}
               onChange={(e) => ctx.workspace.updateTest(test.id, { expected: e.target.value })}
             />
           </div>
-          {result && result.verdict !== "CE" && (
+          {result && result.verdict !== "CE" && interactive && (
+            <div>
+              <FieldLabel>Conversation</FieldLabel>
+              <Transcript result={result} />
+            </div>
+          )}
+          {result && result.verdict !== "CE" && !interactive && (
             <div>
               <FieldLabel
                 actions={
@@ -216,10 +229,23 @@ function TestCard({ ctx, test, index, state }: { ctx: WebPluginContext; test: Te
               <OutputView result={result} expected={test.expected} />
             </div>
           )}
-          {result?.message && result.verdict !== "WA" && <div className="text-[0.6875rem] text-verdict-re">{result.message}</div>}
+          {result?.message && (interactive || result.verdict !== "WA") && (
+            <div className={cn("text-[0.6875rem]", result.verdict === "AC" ? "text-verdict-ac" : "text-verdict-re")}>
+              {interactive && result.verdict !== "AC" ? "Judge: " : ""}
+              {result.message}
+            </div>
+          )}
+          {interactive && result?.interactorStderr && result.interactorStderr.trim().includes("\n") && (
+            <div>
+              <FieldLabel>Interactor stderr</FieldLabel>
+              <pre className="max-h-32 overflow-auto rounded-md border bg-background/40 px-2 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                {result.interactorStderr}
+              </pre>
+            </div>
+          )}
           {result?.stderr && (
             <div>
-              <FieldLabel>stderr</FieldLabel>
+              <FieldLabel>{interactive ? "Your stderr" : "stderr"}</FieldLabel>
               <pre className="max-h-48 overflow-auto rounded-md border bg-background/40 px-2 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
                 {result.stderr}
               </pre>

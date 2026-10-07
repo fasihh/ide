@@ -163,6 +163,9 @@ importers:
       '@cp-ide/plugin-api':
         specifier: workspace:*
         version: link:../../packages/plugin-api
+      '@cp-ide/plugin-palette':
+        specifier: workspace:*
+        version: link:../palette
       '@cp-ide/shared':
         specifier: workspace:*
         version: link:../../packages/shared

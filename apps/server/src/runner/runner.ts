@@ -7,12 +7,14 @@ import {
   type CompileResult,
   type ExecRequest,
   type ExecResult,
+  type InteractRequest,
   compareOutput,
 } from "@cp-ide/shared";
 import type { RunnerService as RunnerApi } from "@cp-ide/plugin-api/server";
 import { CACHE_DIR } from "../paths.ts";
 import type { SettingsService } from "../services/settings.ts";
 import { describeExit } from "./exit-codes.ts";
+import { runInteractive } from "./interact.ts";
 
 type Artifact = { command: string; args: string[]; src: string; fileName?: string };
 
@@ -117,6 +119,61 @@ export class RunnerService implements RunnerApi {
       return await this.doExec(artifact, req);
     } finally {
       this.release();
+    }
+  }
+
+  /** Run the solution against an interactor (see `InteractRequest` for the protocol). */
+  async interact(req: InteractRequest): Promise<ExecResult> {
+    const sol = this.artifacts.get(req.artifactId);
+    const inter = this.artifacts.get(req.interactorArtifactId);
+    if (!sol || !inter) {
+      return { verdict: "RE", timeMs: 0, exitCode: null, stdout: "", stderr: "", message: "Unknown artifact — compile again" };
+    }
+    await this.acquire();
+    const dir = await fs.mkdtemp(path.join(CACHE_DIR, "interact-"));
+    try {
+      const files = { input: path.join(dir, "input.txt"), output: path.join(dir, "output.txt"), answer: path.join(dir, "answer.txt") };
+      await fs.writeFile(files.input, req.input);
+      await fs.writeFile(files.answer, req.expected ?? "");
+      const tl = req.timeLimitMs ?? this.settings.get("runner.timeLimitMs");
+      const res = await runInteractive(sol, { command: inter.command, args: [...inter.args, files.input, files.output, files.answer] }, {
+        timeoutMs: Math.round(tl * this.settings.get("runner.killAfterFactor")),
+        outputLimit: this.settings.get("runner.outputLimitKb") * 1024,
+        cwd: dir,
+        env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1" },
+      });
+      const interStderr = truncate(cleanPaths(res.interactor.stderr, inter.src, inter.fileName)).trim();
+      const base = {
+        timeMs: res.timeMs,
+        exitCode: res.solution.exitCode,
+        stdout: "",
+        stderr: truncate(cleanPaths(res.solution.stderr, sol.src, sol.fileName)),
+        transcript: res.transcript,
+        transcriptTruncated: res.transcriptTruncated,
+        interactorStderr: interStderr,
+      };
+      const judgeSays = interStderr.split(/\r?\n/)[0] || undefined;
+
+      if (res.solution.spawnError) return { ...base, verdict: "RE", message: `Could not start program: ${res.solution.spawnError}` };
+      if (res.interactor.spawnError) return { ...base, verdict: "RE", message: `Could not start interactor: ${res.interactor.spawnError}` };
+      if (res.outputExceeded) return { ...base, verdict: "OLE", message: "Output limit exceeded" };
+      if (res.timedOut) return { ...base, verdict: "TLE", message: `Killed after ${res.timeMs} ms (both sides stopped)` };
+      const ic = res.interactor.exitCode;
+      if (ic === 3) return { ...base, verdict: "RE", message: `Interactor failed (judge error)${judgeSays ? `: ${judgeSays}` : ""}` };
+      if (ic === 1 || ic === 2) {
+        return { ...base, verdict: "WA", message: `${ic === 2 ? "Presentation error" : "Wrong answer"}${judgeSays ? `: ${judgeSays}` : ""}` };
+      }
+      if (ic !== 0) {
+        return { ...base, verdict: "RE", message: `Interactor crashed: ${describeExit(ic, res.interactor.signal) ?? "killed"}${judgeSays ? ` — ${judgeSays}` : ""}` };
+      }
+      if (res.solution.exitCode !== 0 || res.solution.signal) {
+        return { ...base, verdict: "RE", message: describeExit(res.solution.exitCode, res.solution.signal) ?? "Solution did not exit after the interactor finished" };
+      }
+      if (res.timeMs > tl) return { ...base, verdict: "TLE", message: `Took ${res.timeMs} ms (limit ${tl} ms)` };
+      return { ...base, verdict: "AC", message: judgeSays };
+    } finally {
+      this.release();
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
     }
   }
 

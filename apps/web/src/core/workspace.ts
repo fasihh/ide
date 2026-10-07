@@ -126,6 +126,8 @@ export const workspace: Omit<WorkspaceApi, keyof import("@cp-ide/plugin-api/web"
         await workspace.openProblem(target);
       } else {
         setProblem((x) => ({ ...x, meta }));
+        // Turning on interactive mode may have created the interactor file: pull it in.
+        if (patch.interactive || patch.interactor) await reconcileFromDisk([target]);
       }
     }
     set((s) => ({ problems: s.problems.map((x) => (x.id === target ? { ...meta, id: target } : x)) }));

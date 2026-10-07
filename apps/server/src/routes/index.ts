@@ -9,6 +9,7 @@ import {
   libraryNameSchema,
   createProblemSchema,
   execRequestSchema,
+  interactRequestSchema,
   languageSchema,
   problemMetaPatchSchema,
   testCaseSchema,
@@ -86,7 +87,8 @@ export const problemsRoutes = (s: Services) =>
 export const runRoutes = (s: Services) =>
   new Hono()
     .post("/compile", zValidator("json", compileRequestSchema), async (c) => c.json(await s.runner.compile(c.req.valid("json"))))
-    .post("/exec", zValidator("json", execRequestSchema), async (c) => c.json(await s.runner.exec(c.req.valid("json"))));
+    .post("/exec", zValidator("json", execRequestSchema), async (c) => c.json(await s.runner.exec(c.req.valid("json"))))
+    .post("/interact", zValidator("json", interactRequestSchema), async (c) => c.json(await s.runner.interact(c.req.valid("json"))));
 
 const kindParam = z.object({ kind: libraryKindSchema });
 

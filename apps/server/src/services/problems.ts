@@ -18,7 +18,7 @@ import type { ProblemsService as ProblemsApi } from "@cp-ide/plugin-api/server";
 import { expandHome, resolveInside } from "../paths.ts";
 import { HttpError } from "../errors.ts";
 import { writeFileAtomic } from "../fs-utils.ts";
-import type { LibraryService } from "./library.ts";
+import { INTERACTOR_TEMPLATES, type LibraryService } from "./library.ts";
 import type { SettingsService } from "./settings.ts";
 
 const META_FILE = "problem.json";
@@ -173,6 +173,17 @@ export class ProblemsService implements ProblemsApi {
       next.mainFile = `main.${LANGUAGE_INFO[patch.language].ext}`;
       const p = path.join(dir, next.mainFile);
       if (!(await exists(p))) await fs.writeFile(p, await this.template(patch.language));
+    }
+    if (next.interactive) {
+      // Interactive problems need an interactor; create one from a template the first time.
+      const fallback = INTERACTOR_TEMPLATES[next.language];
+      next.interactor ??= fallback.name;
+      const p = path.join(dir, this.checkFileName(next.interactor));
+      if (!(await exists(p))) {
+        const language: Language = next.interactor.endsWith(".py") ? "python" : "cpp";
+        const own = await this.library.read("templates", INTERACTOR_TEMPLATES[language].name).catch(() => null);
+        await fs.writeFile(p, own ?? INTERACTOR_TEMPLATES[language].content);
+      }
     }
     await writeJson(path.join(dir, META_FILE), next);
     return next;

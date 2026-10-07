@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, FolderInput, Pencil, Trash2 } from "lucide-react";
 import type { PanelProps } from "@cp-ide/plugin-api/web";
 import type { CompareMode, Language, ProblemMetaPatch, ProblemStatus } from "@cp-ide/shared";
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, cn } from "@cp-ide/ui";
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea, cn } from "@cp-ide/ui";
 import { deleteProblem, moveProblem, renameProblem } from "../explorer/actions.ts";
 
 /** Text input that commits on blur / Enter instead of on every keystroke. */
@@ -34,6 +34,12 @@ export function ProblemPanel({ ctx }: PanelProps) {
 
   if (!problem) return <div className="p-4 text-xs text-muted-foreground">No problem open.</div>;
   const { meta } = problem;
+  const interactorChoices = [
+    ...new Set([
+      meta.interactor ?? "interactor.cpp",
+      ...problem.files.map((f) => f.name).filter((n) => n !== meta.mainFile && /\.(cpp|cc|cxx|py)$/.test(n)),
+    ]),
+  ];
   const update = (patch: ProblemMetaPatch) =>
     ctx.workspace.updateMeta(patch).catch((err) => ctx.notify.error("Could not update problem", String(err?.message ?? err)));
   const num = (v: string) => (v.trim() === "" ? undefined : Math.max(1, Math.round(Number(v)) || 0) || undefined);
@@ -114,6 +120,38 @@ export function ProblemPanel({ ctx }: PanelProps) {
             onCommit={(v) => update({ floatEpsilon: v.trim() === "" || Number.isNaN(Number(v)) ? undefined : Math.max(0, Number(v)) })}
           />
         </div>
+      </div>
+      <div className="space-y-2 rounded-md border p-2.5">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <Label>Interactive problem</Label>
+            <div className="mt-0.5 text-[0.6875rem] text-muted-foreground">
+              Tests talk to an interactor (your judge program) instead of comparing output.
+            </div>
+          </div>
+          <Switch checked={!!meta.interactive} onCheckedChange={(on) => update({ interactive: on })} />
+        </div>
+        {meta.interactive && (
+          <div className="grid gap-1.5">
+            <Label>Interactor</Label>
+            <Select value={meta.interactor ?? "interactor.cpp"} onValueChange={(v) => update({ interactor: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {interactorChoices.map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="text-[0.625rem] text-muted-foreground">
+              Started as <span className="font-mono">interactor input.txt output.txt answer.txt</span>; exit code 0 = AC, 1 = WA. See the comments in the
+              template.
+            </div>
+          </div>
+        )}
       </div>
       <div className="grid gap-1.5">
         <Label>Tags</Label>

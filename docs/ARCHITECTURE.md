@@ -72,7 +72,8 @@ Scratch problems go to `scratch/<yyyy-mm-dd>/scratch-<hhmmss>`.
 | `GET/PUT /api/library/:kind`, `POST /api/library/:kind/{create,rename,delete}` | templates / snippets |
 | `GET /api/events` | SSE stream of `ServerEvent`s (problems changed on disk) |
 | `POST /api/run/compile` | `{ language, source, fileName }` → `CompileResult` (`artifactId`) |
-| `POST /api/run/exec` | `{ artifactId, input, expected?, timeLimitMs?, compareMode? }` → `ExecResult` |
+| `POST /api/run/exec` | `{ artifactId, input, expected?, timeLimitMs?, compareMode?, floatEpsilon? }` → `ExecResult` |
+| `POST /api/run/interact` | `{ artifactId, interactorArtifactId, input, expected?, timeLimitMs? }` → `ExecResult` with `transcript` |
 | `/api/plugins/<id>/*` | plugin routes |
 
 Errors are always `{ error: string }` with a 4xx/5xx status (`HttpError`, zod, validator hook).

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/plugin-palette": "workspace:*",
     "@cp-ide/shared": "workspace:*",
     "@cp-ide/ui": "workspace:*",
     "@monaco-editor/react": "^4.7.0",

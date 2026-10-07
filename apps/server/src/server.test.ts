@@ -16,6 +16,7 @@ const { ProblemsService } = await import("./services/problems.ts");
 const { RunnerService } = await import("./runner/runner.ts");
 const { LibraryService } = await import("./services/library.ts");
 const { ProblemsWatcher } = await import("./services/watcher.ts");
+const { INTERACTOR_TEMPLATES } = await import("./services/library.ts");
 
 const settings = new SettingsService();
 const runner = new RunnerService(settings);
@@ -171,12 +172,12 @@ describe("library", () => {
     await library.remove("snippets", "dsu.cpp");
     assert.ok(!(await library.list("snippets")).some((t) => t.name === "dsu.cpp"), "deleted defaults stay deleted");
 
-    await library.create("snippets", "seg.cpp", "struct Seg {};\n");
-    await library.rename("snippets", "seg.cpp", "segtree.cpp");
-    await library.save("snippets", "segtree.cpp", "struct SegTree {};\n");
-    assert.equal(await library.read("snippets", "segtree.cpp"), "struct SegTree {};\n");
+    await library.create("snippets", "tree.cpp", "struct Tree {};\n");
+    await library.rename("snippets", "tree.cpp", "mytree.cpp");
+    await library.save("snippets", "mytree.cpp", "struct MyTree {};\n");
+    assert.equal(await library.read("snippets", "mytree.cpp"), "struct MyTree {};\n");
     await assert.rejects(library.create("snippets", "../evil.cpp"));
-    await assert.rejects(library.create("snippets", "segtree.cpp"), /already exists/);
+    await assert.rejects(library.create("snippets", "mytree.cpp"), /already exists/);
   });
 });
 
@@ -191,5 +192,89 @@ describe("watcher", () => {
     await new Promise((r) => setTimeout(r, 1000));
     w.close();
     assert.ok(seen.flat().includes(p.id), `expected ${p.id} in ${JSON.stringify(seen)}`);
+  });
+});
+
+describe("interactive", () => {
+  const solve = String.raw`#include <bits/stdc++.h>
+using namespace std;
+int main() {
+    long long n; cin >> n;
+    long long lo = 1, hi = n;
+    while (lo < hi) {
+        long long mid = (lo + hi) / 2;
+        cout << "? " << mid << endl;
+        string r; cin >> r;
+        if (r == "=") { lo = hi = mid; break; }
+        if (r == "<") lo = mid + 1; else hi = mid - 1;
+    }
+    cout << "! " << lo << endl;
+}`;
+  const interactorCpp = INTERACTOR_TEMPLATES.cpp.content;
+
+  async function both(solutionSrc: string, language: "cpp" | "python" = "cpp") {
+    const sol = await compile(language, solutionSrc);
+    const inter = await compile("cpp", interactorCpp);
+    return (input: string, timeLimitMs = 2000) => runner.interact({ artifactId: sol, interactorArtifactId: inter, input, timeLimitMs });
+  }
+
+  test("AC with transcript, WA when the guess is wrong", async () => {
+    const run = await both(solve);
+    const ac = await run("1000 777");
+    assert.equal(ac.verdict, "AC", ac.message ?? "");
+    assert.match(ac.interactorStderr ?? "", /correct after/);
+    assert.ok(ac.transcript && ac.transcript[0]?.from === "interactor" && ac.transcript[0].text.startsWith("1000"));
+    assert.ok(ac.transcript?.some((t) => t.from === "solution" && t.text.includes("! 777")));
+
+    const wrong = await both(String.raw`#include <iostream>
+int main() { long long n; std::cin >> n; std::cout << "! 1" << std::endl; }`);
+    const wa = await wrong("10 5");
+    assert.equal(wa.verdict, "WA");
+    assert.match(wa.message ?? "", /wrong answer 1, secret was 5/);
+  });
+
+  test("TLE when the solution never answers or forgets to flush", async () => {
+    const silent = await both("int main() { while (true) {} }");
+    assert.equal((await silent("10 5", 300)).verdict, "TLE");
+    // No flush: both sides wait on each other forever.
+    const noFlush = await both(String.raw`#include <cstdio>
+int main() { long long n; scanf("%lld", &n); printf("! 5\n"); while (true) {} }`);
+    assert.equal((await noFlush("10 5", 300)).verdict, "TLE");
+  });
+
+  test("interactor crash and Python solutions", async () => {
+    const sol = await compile("cpp", solve);
+    const bad = await compile("cpp", "int main() { int *p = nullptr; return *p; }");
+    const crash = await runner.interact({ artifactId: sol, interactorArtifactId: bad, input: "10 5" });
+    assert.equal(crash.verdict, "RE");
+    assert.match(crash.message ?? "", /Interactor crashed/);
+
+    const py = await both(
+      'n = int(input())\nlo, hi = 1, n\nwhile lo < hi:\n    mid = (lo + hi) // 2\n    print("?", mid, flush=True)\n    r = input()\n    if r == "=":\n        lo = hi = mid\n        break\n    if r == "<":\n        lo = mid + 1\n    else:\n        hi = mid - 1\nprint("!", lo, flush=True)\n',
+      "python",
+    );
+    assert.equal((await py("100 42")).verdict, "AC");
+  });
+
+  test("making a problem interactive creates the interactor", async () => {
+    const p = await problems.create({ name: "Guess", platform: "custom", group: "i" });
+    const meta = await problems.updateMeta(p.id, { interactive: true });
+    assert.equal(meta.interactor, "interactor.cpp");
+    const got = await problems.get(p.id);
+    assert.match(got.files.find((f) => f.name === "interactor.cpp")?.content ?? "", /plays the judge/);
+  });
+});
+
+describe("library seeding", () => {
+  test("old empty marker: new defaults are added once, first-release ones are not re-added", async () => {
+    const dir = path.join(home, "snippets");
+    await fs.rm(dir, { recursive: true, force: true });
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, ".seeded"), "");
+    const fresh = new LibraryService();
+    const names = (await fresh.list("snippets")).map((s) => s.name);
+    assert.ok(names.includes("segtree.cpp") && names.includes("dsu.py"));
+    assert.ok(!names.includes("dsu.cpp"), "dsu.cpp was part of the first release and had been removed");
+    assert.match((await fresh.read("snippets", "segtree.cpp")) ?? "", /@description/);
   });
 });
