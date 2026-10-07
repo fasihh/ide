@@ -5,6 +5,7 @@ import type { Hono } from "hono";
 import type { ServerPlugin, ServerPluginContext } from "@cp-ide/plugin-api/server";
 import { PLUGINS_DIR, PLUGIN_DATA_DIR } from "./paths.ts";
 import type { Services } from "./services/index.ts";
+import type { SocketRouter } from "./sockets.ts";
 
 export type ServerPluginInfo = { id: string; name: string; description?: string; enabled: boolean; error?: string };
 
@@ -15,7 +16,10 @@ export type ServerPluginInfo = { id: string; name: string; description?: string;
 export class ServerPluginHost {
   readonly infos: ServerPluginInfo[] = [];
 
-  constructor(private services: Services) {}
+  constructor(
+    private services: Services,
+    private sockets: SocketRouter,
+  ) {}
 
   async load(api: Hono<any, any, any>) {
     let folders: string[] = [];
@@ -68,6 +72,7 @@ export class ServerPluginHost {
       library,
       runner,
       on: (event, handler) => events.on(event, handler),
+      websocket: (path, handler) => this.sockets.add(`/api/plugins/${pluginId}/${path.replace(/^\/+/, "")}`, handler),
       log: (...args) => console.log(`[${pluginId}]`, ...args),
     };
   }

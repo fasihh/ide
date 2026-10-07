@@ -1,3 +1,4 @@
+/// <reference path="./vite-env.d.ts" />
 import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import { loader } from "@monaco-editor/react";
@@ -32,7 +33,7 @@ canvas.width = canvas.height = 1;
 const c2d = canvas.getContext("2d", { willReadFrequently: true })!;
 
 /** Resolve a CSS color variable (oklch etc.) to #rrggbb, which Monaco themes require. */
-function cssVarHex(name: string, fallback: string): string {
+export function cssVarHex(name: string, fallback: string): string {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   if (!value) return fallback;
   c2d.clearRect(0, 0, 1, 1);

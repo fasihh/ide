@@ -56,7 +56,7 @@ export default definePlugin({
 | `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()` (main + interactor for interactive problems), `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
 | `panels` | `register`, `open`, `close`, `toggle`, `isOpen`, `useIsOpen`, `list` |
-| `commands` | `register` (with optional `keybinding`), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
+| `commands` | `register` (with optional `keybinding` and `when` condition), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
 | `layout` | `registerPreset({ id, name, panels })`, `applyPreset`, `listPresets`, `saveCurrent(name)`, `deleteSaved`, `reset` |
 | `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive })` — all promise-based |
 | `library` | templates & snippets: `list(kind)`, `use(kind)` (hook), `save`, `create`, `rename`, `remove` |
@@ -171,10 +171,22 @@ Prefer `unwrap` over `res.json()`: it drops a zod validator's 400 response from 
 Settings used by both halves can live in a shared module (see `plugins/format/src/settings.ts`):
 pass them to `settings` on the server and to `ctx.settings.contribute()` on the web side.
 
-Server `ctx`: `settings` (get/getRaw/all), `problems` (list/get/create/createScratch/updateMeta/
+Server `ctx`: `websocket(path, handler)` (served at `/api/plugins/<id>/<path>`, local origins only),
+`settings` (get/getRaw/all), `problems` (list/get/create/createScratch/updateMeta/
 writeFile/writeTests/createFile/deleteFile/renameFile/move/trash/restore/dir/root), `library`
-(list/read/save), `runner` (compile/exec/interact), `on(event)` for `ServerEvents` (`problem:created`,
+(list/read/save), `runner` (compile/exec/interact/start — `start` gives a live process session), `on(event)` for `ServerEvents` (`problem:created`,
 `problem:updated`, `compile:done`, `settings:changed`, `problems:changed`), `dataDir`, `log`.
 `setup` may start its own listeners (e.g. the planned Competitive Companion receiver).
 
-See `plugins/toolchain` and `plugins/format` for complete small examples of both halves.
+See `plugins/toolchain` and `plugins/format` for complete small examples of both halves, and
+`plugins/playground` for WebSockets + live process sessions.
+
+### Embedding an editor
+
+Use `CodeEditor` from `@cp-ide/editor` (add it to your dependencies): it applies the user's editor
+settings, theme and Vim mode and places suggestion/hover widgets correctly inside dock panels.
+
+```tsx
+import { CodeEditor } from "@cp-ide/editor";
+<CodeEditor ctx={ctx} path="myplugin/notes.cpp" language="cpp" value={text} onChange={setText} />
+```

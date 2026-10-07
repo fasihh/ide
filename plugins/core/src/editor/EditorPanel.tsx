@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import Editor from "@monaco-editor/react";
+import { useEffect, useRef } from "react";
 import { Check, ChevronDown, FilePlus2, Keyboard, Plus, X, Zap } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
 import {
@@ -14,10 +13,10 @@ import {
   Tooltip,
   cn,
 } from "@cp-ide/ui";
-import { defineThemes, monaco, overflowWidgetsHost } from "./monaco.ts";
+import { CodeEditor as CodeEditorView, type MonacoEditor, monaco } from "@cp-ide/editor";
 import { parseDiagnostics } from "./diagnostics.ts";
 
-type CodeEditor = monaco.editor.IStandaloneCodeEditor;
+type CodeEditor = MonacoEditor;
 
 /** The mounted editor, shared with commands such as `editor.revealLine`. */
 let current: CodeEditor | null = null;
@@ -110,49 +109,6 @@ export async function deleteFile(ctx: WebPluginContext, file?: string) {
   if (name === problem.meta.mainFile) return ctx.notify.error("The main file can't be deleted");
   const ok = await ctx.ui.confirm({ title: `Delete ${name}?`, message: "The file is removed from the problem folder.", confirmLabel: "Delete", destructive: true });
   if (ok) await ctx.workspace.deleteFile(name).catch((e) => ctx.notify.error("Could not delete file", String(e?.message ?? e)));
-}
-
-/** Colours for the Vim mode pill (Zed-style): normal = blue, insert = green, visual = purple, replace = red. */
-const VIM_MODE_CLASS: Record<string, string> = {
-  normal: "bg-primary/15 text-primary",
-  insert: "bg-verdict-ac/15 text-verdict-ac",
-  visual: "bg-verdict-re/15 text-verdict-re",
-  replace: "bg-verdict-wa/15 text-verdict-wa",
-};
-const PILL = "mr-2 inline-block rounded px-1.5 font-sans text-[0.625rem] leading-4 font-semibold tracking-wider";
-
-/** Attach monaco-vim while `enabled`; the status line (mode pill, `:` commands, pending keys) renders into `statusRef`. */
-function useVim(editor: CodeEditor | null, enabled: boolean, statusRef: React.RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    if (!editor || !enabled || !statusRef.current) return;
-    let disposed = false;
-    let vim: { dispose(): void } | null = null;
-    void import("monaco-vim").then(({ initVimMode, StatusBar }) => {
-      if (disposed) return;
-      // Render the mode as a coloured pill instead of "--NORMAL--" text.
-      class ColoredStatusBar extends StatusBar {
-        setMode(ev: { mode: string; subMode?: string }) {
-          const label =
-            ev.mode === "visual"
-              ? ev.subMode === "linewise"
-                ? "VISUAL LINE"
-                : ev.subMode === "blockwise"
-                  ? "VISUAL BLOCK"
-                  : "VISUAL"
-              : ev.mode.toUpperCase();
-          const node = (this as unknown as { modeInfoNode: HTMLElement }).modeInfoNode;
-          node.textContent = label;
-          node.className = cn(PILL, VIM_MODE_CLASS[ev.mode] ?? VIM_MODE_CLASS.normal);
-        }
-      }
-      vim = initVimMode(editor, statusRef.current, ColoredStatusBar);
-    });
-    return () => {
-      disposed = true;
-      vim?.dispose();
-      if (statusRef.current) statusRef.current.textContent = "";
-    };
-  }, [editor, enabled, statusRef]);
 }
 
 const EDITING_MODES = [
@@ -271,23 +227,7 @@ export function EditorPanel({ ctx }: PanelProps) {
   const problem = ctx.workspace.use((s) => s.problem);
   const activeFile = ctx.workspace.use((s) => s.activeFile);
   const buffers = ctx.workspace.use((s) => s.buffers);
-  const theme = ctx.theme.use();
-  const fontFamily = ctx.settings.use("editor.fontFamily");
-  const fontSize = ctx.settings.use("editor.fontSize");
-  const fontLigatures = ctx.settings.use("editor.fontLigatures");
-  const tabSize = ctx.settings.use("editor.tabSize");
-  const wordWrap = ctx.settings.use("editor.wordWrap");
-  const minimap = ctx.settings.use("editor.minimap");
-  const lineNumbers = ctx.settings.use("editor.lineNumbers");
-  const vimMode = ctx.settings.use("editor.vimMode");
   const editorRef = useRef<CodeEditor | null>(null);
-  const [editor, setEditor] = useState<CodeEditor | null>(null);
-  const vimStatusRef = useRef<HTMLDivElement>(null);
-  useVim(editor, vimMode, vimStatusRef);
-
-  useEffect(() => {
-    monaco.editor.setTheme(defineThemes());
-  }, [theme]);
 
   useEffect(
     () => () => {
@@ -303,44 +243,20 @@ export function EditorPanel({ ctx }: PanelProps) {
   return (
     <div className="flex h-full flex-col">
       <FileTabs ctx={ctx} files={files} activeFile={activeFile} />
-      <div className="min-h-0 flex-1">
-        <Editor
-          path={`${problem.id}/${activeFile}`}
-          language={languageOf(activeFile)}
-          value={buffer?.content ?? ""}
-          theme={theme === "dark" ? "cp-dark" : "cp-light"}
-          beforeMount={() => defineThemes()}
-          onMount={(editor) => {
-            editorRef.current = editor;
-            current = editor;
-            setEditor(editor);
-            editor.onDidFocusEditorText(() => (current = editor));
-            editor.focus();
-          }}
-          onChange={(value) => ctx.workspace.setBuffer(activeFile, value ?? "")}
-          loading={<div className="p-4 text-xs text-muted-foreground">Loading editor…</div>}
-          options={{
-            fontFamily,
-            fontSize,
-            fontLigatures,
-            tabSize,
-            wordWrap: wordWrap ? "on" : "off",
-            minimap: { enabled: minimap },
-            lineNumbers,
-            automaticLayout: true,
-            scrollBeyondLastLine: false,
-            padding: { top: 8 },
-            smoothScrolling: true,
-            cursorBlinking: "smooth",
-            fixedOverflowWidgets: true,
-            overflowWidgetsDomNode: overflowWidgetsHost(),
-            bracketPairColorization: { enabled: true },
-            renderWhitespace: "selection",
-            stickyScroll: { enabled: false },
-          }}
-        />
-      </div>
-      {vimMode && <div ref={vimStatusRef} className="h-6 shrink-0 border-t px-2 font-mono text-[0.6875rem] leading-6 text-muted-foreground [&_input]:bg-transparent [&_input]:text-foreground [&_input]:outline-none" />}
+      <CodeEditorView
+        ctx={ctx}
+        className="min-h-0 flex-1"
+        path={`${problem.id}/${activeFile}`}
+        language={languageOf(activeFile)}
+        value={buffer?.content ?? ""}
+        onMount={(editor) => {
+          editorRef.current = editor;
+          current = editor;
+          editor.onDidFocusEditorText(() => (current = editor));
+          editor.focus();
+        }}
+        onChange={(value) => ctx.workspace.setBuffer(activeFile, value)}
+      />
     </div>
   );
 }

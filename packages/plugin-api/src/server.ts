@@ -69,10 +69,35 @@ export interface LibraryService {
   save(kind: LibraryKind, name: string, content: string): Promise<void>;
 }
 
+/** A running program with streaming I/O (see `RunnerService.start`). */
+export interface ProcessSession {
+  write(data: string): void;
+  /** Close stdin (EOF). */
+  end(): void;
+  kill(): void;
+  onStdout(cb: (data: string) => void): void;
+  onStderr(cb: (data: string) => void): void;
+  /** `message` explains abnormal exits (crash, killed, time/output limit). */
+  onExit(cb: (info: { exitCode: number | null; timeMs: number; message?: string }) => void): void;
+}
+
 export interface RunnerService {
   compile(req: CompileRequest): Promise<CompileResult>;
   exec(req: ExecRequest): Promise<ExecResult>;
   interact(req: InteractRequest): Promise<ExecResult>;
+  /**
+   * Start a compiled artifact with live stdin/stdout (for terminals). `maxRunMs` = 0 means no limit.
+   * Returns null for an unknown artifact (compile first).
+   */
+  start(artifactId: string, opts?: { maxRunMs?: number; outputLimit?: number }): ProcessSession | null;
+}
+
+/** A WebSocket connection handed to a plugin's `websocket()` handler. Messages are text. */
+export interface PluginSocket {
+  send(data: string): void;
+  close(): void;
+  onMessage(cb: (data: string) => void): void;
+  onClose(cb: () => void): void;
 }
 
 export interface ServerPluginContext {
@@ -84,6 +109,8 @@ export interface ServerPluginContext {
   readonly library: LibraryService;
   readonly runner: RunnerService;
   on<K extends keyof ServerEvents>(event: K, handler: (payload: ServerEvents[K]) => void): Disposable;
+  /** Accept WebSocket connections at `/api/plugins/<id>/<path>`. */
+  websocket(path: string, handler: (socket: PluginSocket) => void): Disposable;
   log(...args: unknown[]): void;
 }
 

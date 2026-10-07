@@ -3,6 +3,28 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — Phase 5 complete (Playground)
+
+- Interactive mode made discoverable first: the box moved under Status/Language in the Problem panel,
+  a Standard/Interactive toggle chip in the Tests header, commands `problems.toggleInteractive` and
+  `problems.openInteractor`.
+- **Server**: `sockets.ts` (`SocketRouter`, `ws` noServer, rejects non-local `Origin` — browsers don't
+  apply CORS to WebSockets), `ctx.websocket(path, handler)` for plugins at `/api/plugins/<id>/<path>`,
+  `RunnerService.start` (live session: write/end/kill, stdout/stderr/exit callbacks, Python
+  unbuffered, max run time, output cap). Vite proxies `/api` WebSockets (`ws: true`).
+- **`@cp-ide/editor`** (new package): Monaco setup, themes, overflow host and Vim moved out of the core
+  plugin; `CodeEditor` component used by the core editor, Templates & Snippets and the Playground.
+- **Keybindings**: `CommandContribution.when`; commands with a satisfied condition win over
+  unconditional ones.
+- **`plugins/playground`**: server half (files in `playground.folder`, starter `main.cpp`, run socket)
+  and web half (store with autosave + socket client, `PlaygroundPanel`, `TerminalPanel` with line
+  editing, commands, layout preset).
+- **Verified**: run socket end to end through the Vite proxy (prompt before input, stdin, stderr
+  separate, exit code); terminal run triggered from the Playground with input typed into xterm (exit 0);
+  file create/save/list in the playground folder; save-as-problem path. Tests: 27 passing (new: live
+  session I/O + kill, WebSocket origin rejection). **Not visually verified**: the terminal rendering
+  itself — the browser pane was hidden during testing.
+
 ## 2026-10-08 — Phase 4 complete (interactive problems & snippets)
 
 **Interactive problems**

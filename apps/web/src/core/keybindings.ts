@@ -100,7 +100,9 @@ export function installKeybindings() {
       recorder(pressed === "esc" ? undefined : pressed);
       return;
     }
-    const cmd = listCommands().find((c) => c.keybinding && normalizeKeybinding(c.keybinding) === pressed);
+    const matches = listCommands().filter((c) => c.keybinding && normalizeKeybinding(c.keybinding) === pressed);
+    // Commands with a satisfied `when` condition beat unconditional ones; failed conditions don't fire.
+    const cmd = matches.find((c) => c.when?.() === true) ?? matches.find((c) => !c.when);
     if (!cmd) return;
     e.preventDefault();
     e.stopPropagation();

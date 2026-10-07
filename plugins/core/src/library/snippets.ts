@@ -2,7 +2,7 @@ import { Puzzle } from "lucide-react";
 import type { Disposable, WebPluginContext } from "@cp-ide/plugin-api/web";
 import type { PaletteService } from "@cp-ide/plugin-palette";
 import { type LibraryItem, parseSnippet, snippetPreview } from "@cp-ide/shared";
-import { monaco } from "../editor/monaco.ts";
+import { monaco } from "@cp-ide/editor";
 import { currentEditor } from "../editor/EditorPanel.tsx";
 
 const CACHE_MS = 5000;

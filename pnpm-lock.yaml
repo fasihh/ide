@@ -32,6 +32,9 @@ importers:
       hono:
         specifier: ^4.13.13
         version: 4.13.13
+      ws:
+        specifier: ^8.22.0
+        version: 8.22.0
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -39,6 +42,9 @@ importers:
       '@types/node':
         specifier: ^26.6.4
         version: 26.6.4
+      '@types/ws':
+        specifier: ^8.18.2
+        version: 8.18.2
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -107,6 +113,31 @@ importers:
         specifier: ^8.3.3
         version: 8.3.3(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
+  packages/editor:
+    dependencies:
+      '@cp-ide/plugin-api':
+        specifier: workspace:*
+        version: link:../plugin-api
+      '@cp-ide/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@monaco-editor/react':
+        specifier: ^4.7.0
+        version: 4.7.0(monaco-editor@0.57.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      monaco-editor:
+        specifier: ^0.57.0
+        version: 0.57.0
+      monaco-vim:
+        specifier: ^0.4.4
+        version: 0.4.4(monaco-editor@0.57.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+
   packages/plugin-api:
     dependencies:
       '@cp-ide/shared':
@@ -160,6 +191,9 @@ importers:
 
   plugins/core:
     dependencies:
+      '@cp-ide/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
       '@cp-ide/plugin-api':
         specifier: workspace:*
         version: link:../../packages/plugin-api
@@ -181,9 +215,6 @@ importers:
       monaco-editor:
         specifier: ^0.57.0
         version: 0.57.0
-      monaco-vim:
-        specifier: ^0.4.4
-        version: 0.4.4(monaco-editor@0.57.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -241,6 +272,52 @@ importers:
         specifier: ^5.0.15
         version: 5.0.15(@types/react@19.3.0)(react@19.3.0)
     devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+
+  plugins/playground:
+    dependencies:
+      '@cp-ide/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
+      '@cp-ide/plugin-api':
+        specifier: workspace:*
+        version: link:../../packages/plugin-api
+      '@cp-ide/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@cp-ide/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@hono/zod-validator':
+        specifier: ^0.9.1
+        version: 0.9.1(hono@4.13.13)(zod@4.6.5)
+      '@xterm/addon-fit':
+        specifier: ^0.11.0
+        version: 0.11.0
+      '@xterm/xterm':
+        specifier: ^6.0.0
+        version: 6.0.0
+      hono:
+        specifier: ^4.13.13
+        version: 4.13.13
+      lucide-react:
+        specifier: ^1.52.0
+        version: 1.52.0(@types/react@19.3.0)(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+      zustand:
+        specifier: ^5.0.15
+        version: 5.0.15(@types/react@19.3.0)(react@19.3.0)
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
       '@types/react':
         specifier: ^19
         version: 19.3.0
@@ -1404,6 +1481,9 @@ packages:
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
+
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
     engines: {node: '>=16.20.0'}
@@ -1539,6 +1619,12 @@ packages:
         optional: true
       oxc-transform-react:
         optional: true
+
+  '@xterm/addon-fit@0.11.0':
+    resolution: {integrity: sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==}
+
+  '@xterm/xterm@6.0.0':
+    resolution: {integrity: sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==}
 
   aria-hidden@1.2.6:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
@@ -1967,6 +2053,18 @@ packages:
       tsx:
         optional: true
       yaml:
+        optional: true
+
+  ws@8.22.0:
+    resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
         optional: true
 
   zod@4.6.5:
@@ -3027,6 +3125,10 @@ snapshots:
   '@types/trusted-types@2.0.7':
     optional: true
 
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 26.6.4
+
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
 
@@ -3091,6 +3193,10 @@ snapshots:
     dependencies:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.3.3(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
+
+  '@xterm/addon-fit@0.11.0': {}
+
+  '@xterm/xterm@6.0.0': {}
 
   aria-hidden@1.2.6:
     dependencies:
@@ -3516,6 +3622,8 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
       tsx: 4.23.15
+
+  ws@8.22.0: {}
 
   zod@4.6.5: {}
 

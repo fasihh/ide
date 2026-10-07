@@ -8,6 +8,7 @@ import { HttpError } from "./errors.ts";
 import { WEB_DIST } from "./paths.ts";
 import { ServerPluginHost } from "./plugin-host.ts";
 import { createServices } from "./services/index.ts";
+import { SocketRouter } from "./sockets.ts";
 
 const PORT = Number(process.env.PORT ?? 7420);
 
@@ -19,7 +20,8 @@ if (process.env.CP_IDE_HOME && !fs.existsSync(process.env.CP_IDE_HOME)) {
 }
 
 const services = await createServices();
-const host = new ServerPluginHost(services);
+const sockets = new SocketRouter();
+const host = new ServerPluginHost(services, sockets);
 const api = createApi(services, () => host.infos);
 await host.load(api);
 
@@ -39,7 +41,8 @@ if (fs.existsSync(WEB_DIST)) {
   app.get("*", serveStatic({ root, path: "index.html" }));
 }
 
-serve({ fetch: app.fetch, port: PORT, hostname: "127.0.0.1" }, (info) => {
+const server = serve({ fetch: app.fetch, port: PORT, hostname: "127.0.0.1" }, (info) => {
   console.log(`cp-ide server on http://localhost:${info.port}`);
   console.log(`problems root: ${services.problems.root()}`);
 });
+sockets.attach(server as import("node:http").Server);

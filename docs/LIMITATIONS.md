@@ -35,6 +35,14 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | Global shortcuts win over Vim keys (e.g. Ctrl+B toggles the explorer instead of paging up) | Rebind or unbind the global shortcut in Keyboard Shortcuts |
 | Enabling/disabling a plugin needs a page reload | No hot deactivation yet |
 
+## Playground
+
+| Limitation | Notes / planned fix |
+|---|---|
+| Programs run on pipes, not a real terminal: no colours/`isatty`, C++ output shows only when flushed | Use `endl`/`flush` for prompts (or keep `cin` tied to `cout`); a PTY via node-pty could come later |
+| Input is line-based (sent on Enter); no raw key-by-key input | Fine for typical console programs |
+| One run at a time per terminal | Starting a new run stops the previous one |
+
 ## Problems & storage
 
 | Limitation | Notes / planned fix |

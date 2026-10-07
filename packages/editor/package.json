@@ -1,0 +1,26 @@
+{
+  "name": "@cp-ide/editor",
+  "private": true,
+  "type": "module",
+  "description": "Shared Monaco setup and the CodeEditor component (settings, theme, vim) for plugins.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/ui": "workspace:*",
+    "@monaco-editor/react": "^4.7.0",
+    "monaco-editor": "^0.57.0",
+    "monaco-vim": "^0.4.4"
+  },
+  "peerDependencies": {
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "react": "^19.3.0"
+  }
+}

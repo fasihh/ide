@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import Editor from "@monaco-editor/react";
 import { Pencil, Plus, Star, Trash2 } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
 import { type LibraryItem, type LibraryKind, libraryNameSchema } from "@cp-ide/shared";
 import { Button, Tooltip, cn } from "@cp-ide/ui";
-import { defineThemes, overflowWidgetsHost } from "../editor/monaco.ts";
+import { CodeEditor } from "@cp-ide/editor";
 
 const SAVE_DELAY = 600;
 
@@ -41,10 +40,6 @@ export function LibraryPanel({ ctx }: PanelProps) {
   const [selected, setSelected] = useState<Record<LibraryKind, string | null>>({ templates: null, snippets: null });
   const [draft, setDraft] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const theme = ctx.theme.use();
-  const fontFamily = ctx.settings.use("editor.fontFamily");
-  const fontSize = ctx.settings.use("editor.fontSize");
-  const tabSize = ctx.settings.use("editor.tabSize");
   const defaultCpp = ctx.settings.use("templates.defaultCpp");
   const defaultPy = ctx.settings.use("templates.defaultPython");
 
@@ -180,24 +175,13 @@ export function LibraryPanel({ ctx }: PanelProps) {
       </div>
       <div className="min-w-0 flex-1">
         {current ? (
-          <Editor
+          <CodeEditor
+            ctx={ctx}
             path={`library/${kind}/${current.name}`}
             language={current.language}
             value={draft ?? current.content}
-            theme={theme === "dark" ? "cp-dark" : "cp-light"}
-            beforeMount={() => defineThemes()}
-            onChange={(v) => onChange(v ?? "")}
-            options={{
-              fontFamily,
-              fontSize,
-              tabSize,
-              minimap: { enabled: false },
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-              padding: { top: 8 },
-              fixedOverflowWidgets: true,
-              overflowWidgetsDomNode: overflowWidgetsHost(),
-            }}
+            onChange={onChange}
+            options={{ minimap: { enabled: false } }}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{items ? "Create one with +" : "Loading…"}</div>

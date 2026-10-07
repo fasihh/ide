@@ -41,6 +41,7 @@ All of these can be changed in **Keyboard Shortcuts** (Ctrl+Alt+K).
 | Ctrl+S · Shift+Alt+F | Save · format document |
 | Alt+N / Alt+Shift+N | New scratch problem / new problem |
 | F2 | Rename the current file |
+| Alt+G | Playground (Ctrl+Enter runs it, type input in the Terminal) |
 | Alt+T | Add test |
 | Ctrl+Alt+I · `@` in the palette | Insert snippet (Tab moves between placeholders) |
 | Ctrl+B / Ctrl+J | Toggle problems / output panel |

@@ -207,6 +207,11 @@ export interface CommandContribution {
   category?: string;
   /** e.g. "ctrl+enter", "ctrl+shift+p", "alt+1". `ctrl` also matches ⌘ on macOS. */
   keybinding?: string;
+  /**
+   * Context condition for the keybinding. When several commands share a key, the ones whose
+   * `when` returns true win over commands without a condition; false disables the binding.
+   */
+  when?: () => boolean;
   run: (...args: any[]) => unknown;
 }
 

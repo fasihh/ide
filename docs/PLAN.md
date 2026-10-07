@@ -101,22 +101,21 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
   `// @description` / `// @prefix` header, descriptions in autocomplete and the palette (`@` mode),
   new built-ins (segtree, modint, dijkstra, sieve, dsu.py); new defaults reach existing installs once
 
-## Phase 5 — Playground ⬜ (next)
+## Phase 5 — Playground ✅
 
-A Programiz-style "just run some code" mode — no problem, no tests, a live terminal.
-
-- ⬜ `plugins/playground` with a Playground panel (+ "Playground" layout preset): language picker,
-  editor, Run / Stop, and a terminal (xterm.js) where you type input *while the program runs*
-- ⬜ Streaming execution over WebSocket: start (compile via the existing cache), stdin lines, EOF
-  (Ctrl+D), kill (Ctrl+C); stdout/stderr streamed back; exit code, time and crash explanation at the end
-- ⬜ Plugin API: WebSocket routes for server plugins (`@hono/node-ws`, `ctx.upgradeWebSocket`) — reused
-  later by the language-server phase
-- ⬜ Several playground files (tabs), stored in `~/.cp-ide/playground/`, kept separate from problems;
-  "Save as problem" to promote one
-- ⬜ "Run in terminal" for the open problem's main file too (handy for poking at interactive problems by hand)
-- Notes: programs see pipes, not a real terminal — prompts only show once flushed (C++ `cin.tie(nullptr)`
-  in the CP template disables the automatic flush; Python is run unbuffered). A real PTY (node-pty)
-  could come later.
+- ✅ `plugins/playground`: Playground panel (file tabs, Run/Stop, actions) + Terminal panel (xterm.js)
+  where you type input while the program runs; "Playground" layout preset; Alt+G opens it
+- ✅ Streaming runs over a WebSocket (`/api/plugins/playground/run`): compile (cached), live
+  stdout/stderr, stdin lines, Ctrl+D = EOF, Ctrl+C = stop, exit code / time / crash explanation;
+  safety time limit (`playground.maxRunSeconds`)
+- ✅ Files saved (autosave + Ctrl+S) in `playground.folder` (default `~/.cp-ide/plugins/playground`);
+  new / rename / delete, "Save as problem…", "Download file"
+- ✅ "Run problem in terminal" command for the open problem's main file
+- ✅ Platform: WebSocket endpoints for server plugins (`ctx.websocket`, local-origin check),
+  `runner.start` live process sessions, keybinding `when` conditions (Ctrl+Enter / Ctrl+S act on the
+  playground while it has focus), shared `@cp-ide/editor` package (`CodeEditor` with settings, theme, Vim)
+- Programs see pipes, not a TTY: C++ prompts appear when flushed (`endl`/`flush`, or reading from
+  `cin` while it is tied to `cout`); Python runs unbuffered. A real PTY (node-pty) could come later.
 
 ## Phase 6 — Language intelligence (LSP) ⬜
 

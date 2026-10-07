@@ -10,7 +10,7 @@ import {
   type InteractRequest,
   compareOutput,
 } from "@cp-ide/shared";
-import type { RunnerService as RunnerApi } from "@cp-ide/plugin-api/server";
+import type { ProcessSession, RunnerService as RunnerApi } from "@cp-ide/plugin-api/server";
 import { CACHE_DIR } from "../paths.ts";
 import type { SettingsService } from "../services/settings.ts";
 import { describeExit } from "./exit-codes.ts";
@@ -120,6 +120,64 @@ export class RunnerService implements RunnerApi {
     } finally {
       this.release();
     }
+  }
+
+  /**
+   * Start an artifact with live I/O (terminal-style runs). Python runs unbuffered so prompts show up
+   * immediately. Not counted against `runner.maxConcurrency` — these are user-driven, one at a time.
+   */
+  start(artifactId: string, opts: { maxRunMs?: number; outputLimit?: number } = {}): ProcessSession | null {
+    const artifact = this.artifacts.get(artifactId);
+    if (!artifact) return null;
+    const outputLimit = opts.outputLimit ?? this.settings.get("runner.outputLimitKb") * 1024;
+    const started = performance.now();
+    const child = spawn(artifact.command, artifact.args, {
+      cwd: CACHE_DIR,
+      windowsHide: true,
+      env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1", PYTHONUNBUFFERED: "1" },
+    });
+    const listeners = { out: [] as ((d: string) => void)[], err: [] as ((d: string) => void)[], exit: [] as ((i: { exitCode: number | null; timeMs: number; message?: string }) => void)[] };
+    let reason: string | undefined;
+    let spawnError: string | undefined;
+    let bytes = 0;
+    const stop = (why: string) => {
+      reason ??= why;
+      child.kill("SIGKILL");
+    };
+    const timer = opts.maxRunMs ? setTimeout(() => stop(`Stopped after ${Math.round(opts.maxRunMs! / 1000)} s (playground time limit)`), opts.maxRunMs) : undefined;
+    const count = (b: Buffer) => {
+      bytes += b.length;
+      if (bytes > outputLimit) stop(`Stopped: output limit (${Math.round(outputLimit / 1024)} KB) exceeded`);
+    };
+    child.stdout.on("data", (b: Buffer) => {
+      count(b);
+      for (const l of listeners.out) l(b.toString("utf8"));
+    });
+    child.stderr.on("data", (b: Buffer) => {
+      count(b);
+      const text = cleanPaths(b.toString("utf8"), artifact.src, artifact.fileName);
+      for (const l of listeners.err) l(text);
+    });
+    child.stdin.on("error", () => {});
+    child.on("error", (e) => {
+      spawnError = e.message;
+    });
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      const timeMs = Math.round(performance.now() - started);
+      const message = spawnError ? `Could not start program: ${spawnError}` : (reason ?? (code !== 0 || signal ? describeExit(code, signal) : undefined));
+      for (const l of listeners.exit) l({ exitCode: code, timeMs, message });
+    });
+    return {
+      write: (data) => {
+        if (!child.stdin.destroyed) child.stdin.write(data);
+      },
+      end: () => child.stdin.end(),
+      kill: () => stop("Stopped"),
+      onStdout: (cb) => void listeners.out.push(cb),
+      onStderr: (cb) => void listeners.err.push(cb),
+      onExit: (cb) => void listeners.exit.push(cb),
+    };
   }
 
   /** Run the solution against an interactor (see `InteractRequest` for the protocol). */

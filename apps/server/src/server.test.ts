@@ -278,3 +278,50 @@ describe("library seeding", () => {
     assert.match((await fresh.read("snippets", "segtree.cpp")) ?? "", /@description/);
   });
 });
+
+describe("live sessions", () => {
+  test("runner.start streams output and takes stdin; kill stops it", async () => {
+    const id = await compile("python", 'name = input("name? ")\nprint("hi", name)\n');
+    const s = runner.start(id)!;
+    let out = "";
+    s.onStdout((d) => (out += d));
+    const exit = new Promise<{ exitCode: number | null; message?: string }>((r) => s.onExit(r));
+    await new Promise((r) => setTimeout(r, 400));
+    assert.match(out, /name\? /, "prompt is visible before input (unbuffered)");
+    s.write("ada\n");
+    const info = await exit;
+    assert.equal(info.exitCode, 0);
+    assert.match(out, /hi ada/);
+
+    const loop = runner.start(await compile("cpp", "int main() { while (true) {} }"))!;
+    const stopped = new Promise<{ message?: string }>((r) => loop.onExit(r));
+    loop.kill();
+    assert.equal((await stopped).message, "Stopped");
+  });
+
+  test("websocket router rejects foreign origins", async () => {
+    const http = await import("node:http");
+    const { WebSocket } = await import("ws");
+    const { SocketRouter } = await import("./sockets.ts");
+    const router = new SocketRouter();
+    router.add("/api/plugins/test/echo", (sock) => sock.onMessage((m) => sock.send(`echo:${m}`)));
+    const server = http.createServer();
+    router.attach(server);
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const port = (server.address() as import("node:net").AddressInfo).port;
+    const connect = (origin: string) =>
+      new Promise<string>((resolve) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/api/plugins/test/echo`, { headers: { Origin: origin } });
+        ws.on("open", () => ws.send("hi"));
+        ws.on("message", (m) => {
+          resolve(m.toString());
+          ws.close();
+        });
+        ws.on("error", () => resolve("rejected"));
+        ws.on("unexpected-response", () => resolve("rejected"));
+      });
+    assert.equal(await connect("http://localhost:5173"), "echo:hi");
+    assert.equal(await connect("https://evil.example"), "rejected");
+    server.close();
+  });
+});
