@@ -1,0 +1,109 @@
+# Architecture
+
+```
+┌──────────────────────────── browser ────────────────────────────┐
+│ apps/web  (React shell)                                         │
+│  core/: settings · workspace · runner · layout · keybindings    │
+│         plugin-host (builds a ctx per plugin)                   │
+│  shell/: TopBar · Dock (dockview) · StatusBar                   │
+│                ▲ panels/commands/items registered by plugins    │
+│  plugins/*/src/web.tsx  ── ctx (public API) ──┘                 │
+└───────────────┬─────────────────────────────────────────────────┘
+                │ hc<AppType>  /api/*          ctx.rpc() /api/plugins/<id>/*
+┌───────────────▼──────────── node ───────────────────────────────┐
+│ apps/server  (Hono)                                             │
+│  routes/ → services/{settings, problems} · runner/              │
+│  plugin-host → plugins/*/src/server.ts (routes + setup)         │
+└───────────────┬─────────────────────────────────────────────────┘
+                ▼
+   ~/cp/…                    problems (plain files, user-visible)
+   ~/.cp-ide/settings.json   overrides only
+   ~/.cp-ide/templates/      main.cpp / main.py templates
+   ~/.cp-ide/cache/          compiled binaries keyed by content hash
+   ~/.cp-ide/plugins/<id>/   private plugin storage
+```
+
+## Packages
+
+| Path | Role |
+|---|---|
+| `packages/shared` | Domain types + zod schemas (`problem.json`, tests, verdicts), settings descriptor system and core settings, output comparator |
+| `packages/plugin-api` | Types/helpers for plugins: `./web` (WebPluginContext, definePlugin) and `./server` (ServerPluginContext, defineServerPlugin), `Emitter`, disposables |
+| `packages/ui` | shadcn-style components (compact sizes) + design tokens (`styles.css`), incl. verdict colours |
+| `apps/server` | Hono API, services, runner, server plugin host. Exports `AppType` |
+| `apps/web` | Shell + core stores + web plugin host. No feature UI lives here |
+| `plugins/core` | All built-in tools (explorer, editor, tests, output, problem, settings, toolbar/status items) |
+| `plugins/toolchain` | Example full-stack plugin (server route + panel + contributed setting) |
+
+Internal packages export TypeScript source directly (no build step); Vite and tsx compile them.
+Imports use explicit `.ts` extensions (`allowImportingTsExtensions`).
+
+## Data model
+
+```
+<problems.root>/<platform-slug>/<group-slug>/<name-slug>/
+  problem.json   # ProblemMeta: name, platform, group, url, language, mainFile, timeLimitMs?,
+                 #   memoryLimitMb?, status (todo|attempted|solved), tags, notes, createdAt, updatedAt
+  tests.json     # TestCase[]: { id, input, expected, isSample, enabled }
+  main.cpp|py    # created from ~/.cp-ide/templates/main.<ext>
+```
+
+A problem's **id** is its folder path relative to the root (posix `/`). The server scans the root
+(depth ≤ 5) for `problem.json`; there is no database. Duplicate names get `-2`, `-3` suffixes.
+Scratch problems go to `scratch/<yyyy-mm-dd>/scratch-<hhmmss>`.
+
+## API (`apps/server/src/app.ts`, `routes/index.ts`)
+
+| Route | Purpose |
+|---|---|
+| `GET /api/health` | liveness |
+| `GET /api/plugins` | server plugin infos |
+| `GET/PATCH /api/settings` | effective values + overrides; PATCH a partial map (`null` resets) |
+| `GET /api/problems` | list (`{ root, problems }`) |
+| `GET /api/problems/detail?id=` | meta + tests + file contents |
+| `POST /api/problems`, `POST /api/problems/scratch` | create |
+| `PATCH /api/problems/meta` · `PUT /api/problems/file` · `PUT /api/problems/tests` | update |
+| `POST /api/run/compile` | `{ language, source, fileName }` → `CompileResult` (`artifactId`) |
+| `POST /api/run/exec` | `{ artifactId, input, expected?, timeLimitMs?, compareMode? }` → `ExecResult` |
+| `/api/plugins/<id>/*` | plugin routes |
+
+Errors are always `{ error: string }` with a 4xx/5xx status (`HttpError`, zod, validator hook).
+The web client uses `unwrap(api.x.$get())`, which throws the message and returns the typed body.
+
+## Run flow
+
+1. `runner.run()` (web, `apps/web/src/core/runner.ts`) saves dirty buffers in the background and
+   marks tests queued.
+2. `POST /run/compile` with the **current buffer** (not the file on disk). The server hashes
+   compiler + flags + source; a cached binary is reused. Diagnostics have the temp path replaced by
+   the user's file name. On Windows a fresh `.exe` gets a warm-up launch so antivirus scanning does
+   not count against the first test.
+3. Tests run through `POST /run/exec` with client-side concurrency (`runner.maxConcurrency`); the
+   server also caps concurrent processes. Results stream into the store test by test.
+4. Verdict: spawn error/RE (non-zero exit, explained) → TLE (killed at TL × `killAfterFactor`, or
+   finished over TL) → OLE → RAN (no expected output) → AC/WA via `compareOutput`.
+5. Events: `run:started`, `run:compiled`, `run:test-finished`, `run:finished`.
+
+Timing is wall-clock including process start (~10–30 ms on Windows). Memory is not limited yet.
+
+## Web shell
+
+- **Registry** (`core/registry.ts`): zustand store of contributions; each carries its owner `ctx`.
+- **Layout** (`core/layout.ts`): every panel is the single dockview component `plugin-panel` with
+  `params.panelId`, so saved layouts survive plugin changes. Default layout is built from
+  `defaultOpen` panels by `placement` (center first, then left/right/bottom). Layout JSON is saved to
+  `localStorage["cp-ide.layout.v1"]`; `defaultRenderer="always"` keeps hidden tabs mounted (Monaco state).
+- **Keybindings** (`core/keybindings.ts`): one capture-phase `keydown` listener matches command
+  keybindings, so commands beat Monaco's own bindings. Browsers reserve some combos (Ctrl+N/T/W).
+- **Theme** (`core/theme.ts`): toggles `.dark` on `<html>`, sets `--ui-font-size`/`--editor-font`.
+  dockview is themed by `.dockview-theme-cp` in `apps/web/src/index.css`; Monaco themes are derived
+  from CSS tokens at runtime (`plugins/core/src/editor/monaco.ts`).
+- **Workspace** (`core/workspace.ts`): open problem, buffers (`content` vs `saved`), debounced
+  autosave and tests save, last problem restored from localStorage.
+- Dev only: `window.__cp` exposes stores and services for debugging.
+
+## Testing
+
+- `packages/shared`: `node --test` unit tests (comparator).
+- `apps/server`: `tsx --test` integration tests using the real g++/python and a temp `CP_IDE_HOME`.
+- `pnpm typecheck` runs `tsc` in every package via turbo.

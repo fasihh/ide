@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@cp-ide/server",
+        "dev"
+      ],
+      "port": 7420
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@cp-ide/web",
+        "dev"
+      ],
+      "port": 5173
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@cp-ide/plugin-toolchain",
+  "private": true,
+  "type": "module",
+  "description": "Shows compiler / interpreter versions and warns when they are missing.",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/shared": "workspace:*",
+    "@cp-ide/ui": "workspace:*",
+    "hono": "^4.13.13",
+    "lucide-react": "^1.52.0",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19"
+  }
+}

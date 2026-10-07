@@ -1,0 +1,248 @@
+import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
+import {
+  type CompileRequest,
+  type CompileResult,
+  type ExecRequest,
+  type ExecResult,
+  compareOutput,
+} from "@cp-ide/shared";
+import type { RunnerService as RunnerApi } from "@cp-ide/plugin-api/server";
+import { CACHE_DIR } from "../paths.ts";
+import type { SettingsService } from "../services/settings.ts";
+import { describeExit } from "./exit-codes.ts";
+
+type Artifact = { command: string; args: string[]; src: string; fileName?: string };
+
+const COMPILE_TIMEOUT_MS = 60_000;
+/** Output beyond this is still compared, but not sent back to the UI. */
+const MAX_RETURNED_OUTPUT = 256 * 1024;
+const EXE = process.platform === "win32" ? ".exe" : "";
+
+export function splitArgs(s: string): string[] {
+  return (s.match(/(?:[^\s"]+|"[^"]*")+/g) ?? []).map((a) => a.replace(/"/g, ""));
+}
+
+const hash = (...parts: string[]) => createHash("sha256").update(parts.join("\0")).digest("hex").slice(0, 20);
+
+export class RunnerService implements RunnerApi {
+  private artifacts = new Map<string, Artifact>();
+  private inflight = new Map<string, Promise<CompileResult>>();
+  private running = 0;
+  private waiters: (() => void)[] = [];
+
+  constructor(
+    private settings: SettingsService,
+    private onCompiled: (req: CompileRequest, res: CompileResult) => void = () => {},
+  ) {}
+
+  async compile(req: CompileRequest): Promise<CompileResult> {
+    const key = this.cacheKey(req);
+    // Identical concurrent requests share one compilation.
+    let p = this.inflight.get(key);
+    if (!p) {
+      p = this.doCompile(key, req).finally(() => this.inflight.delete(key));
+      this.inflight.set(key, p);
+    }
+    const res = await p;
+    this.onCompiled(req, res);
+    return res;
+  }
+
+  private cacheKey(req: CompileRequest): string {
+    const s = this.settings;
+    if (req.language === "cpp") {
+      return `cpp-${hash(s.get("cpp.compiler"), s.get("cpp.standard"), s.get("cpp.flags"), String(s.get("cpp.stackSizeMb")), req.source)}`;
+    }
+    return `py-${hash(s.get("python.interpreter"), req.source)}`;
+  }
+
+  private async doCompile(key: string, req: CompileRequest): Promise<CompileResult> {
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    const started = performance.now();
+    const elapsed = () => Math.round(performance.now() - started);
+
+    if (req.language === "python") {
+      const interpreter = this.settings.get("python.interpreter");
+      const src = path.join(CACHE_DIR, `${key}.py`);
+      await fs.writeFile(src, req.source);
+      const check = await runProcess(interpreter, ["-m", "py_compile", src], { timeoutMs: COMPILE_TIMEOUT_MS });
+      if (check.spawnError) return { ok: false, timeMs: elapsed(), stderr: `Could not start "${interpreter}": ${check.spawnError}` };
+      if (check.exitCode !== 0) return { ok: false, timeMs: elapsed(), stderr: cleanPaths(check.stderr, src, req.fileName) };
+      this.artifacts.set(key, { command: interpreter, args: ["-X", "utf8", src], src, fileName: req.fileName });
+      return { ok: true, artifactId: key, cached: false, timeMs: elapsed(), stderr: "" };
+    }
+
+    const exe = path.join(CACHE_DIR, `${key}${EXE}`);
+    const src = path.join(CACHE_DIR, `${key}.cpp`);
+    const artifact: Artifact = { command: exe, args: [], src, fileName: req.fileName };
+    if (await fs.access(exe).then(() => true, () => false)) {
+      this.artifacts.set(key, artifact);
+      return { ok: true, artifactId: key, cached: true, timeMs: 0, stderr: "" };
+    }
+
+    await fs.writeFile(src, req.source);
+    const compiler = this.settings.get("cpp.compiler");
+    const stackMb = this.settings.get("cpp.stackSizeMb");
+    const args = [
+      `-std=${this.settings.get("cpp.standard")}`,
+      ...splitArgs(this.settings.get("cpp.flags")),
+      "-fdiagnostics-color=never",
+      src,
+      "-o",
+      exe,
+      ...(process.platform === "win32" && stackMb > 0 ? [`-Wl,--stack,${stackMb * 1024 * 1024}`] : []),
+    ];
+    const res = await runProcess(compiler, args, { timeoutMs: COMPILE_TIMEOUT_MS });
+    const stderr = cleanPaths(res.stderr + res.stdout, src, req.fileName);
+    if (res.spawnError) return { ok: false, timeMs: elapsed(), stderr: `Could not start "${compiler}": ${res.spawnError}` };
+    if (res.timedOut) return { ok: false, timeMs: elapsed(), stderr: "Compilation timed out" };
+    if (res.exitCode !== 0) return { ok: false, timeMs: elapsed(), stderr };
+    // The first launch of a new .exe is slow on Windows (antivirus scan). Pay that cost
+    // now, with empty input, instead of inside the first test's timing.
+    if (process.platform === "win32") await runProcess(exe, [], { timeoutMs: 3000, cwd: CACHE_DIR });
+    this.artifacts.set(key, artifact);
+    return { ok: true, artifactId: key, cached: false, timeMs: elapsed(), stderr };
+  }
+
+  async exec(req: ExecRequest): Promise<ExecResult> {
+    const artifact = this.artifacts.get(req.artifactId);
+    if (!artifact) {
+      return { verdict: "RE", timeMs: 0, exitCode: null, stdout: "", stderr: "", message: "Unknown artifact — compile again" };
+    }
+    await this.acquire();
+    try {
+      return await this.doExec(artifact, req);
+    } finally {
+      this.release();
+    }
+  }
+
+  private async doExec(artifact: Artifact, req: ExecRequest): Promise<ExecResult> {
+    const tl = req.timeLimitMs ?? this.settings.get("runner.timeLimitMs");
+    const res = await runProcess(artifact.command, artifact.args, {
+      input: req.input,
+      timeoutMs: Math.round(tl * this.settings.get("runner.killAfterFactor")),
+      outputLimit: this.settings.get("runner.outputLimitKb") * 1024,
+      cwd: CACHE_DIR,
+    });
+    const base = {
+      timeMs: res.timeMs,
+      exitCode: res.exitCode,
+      stdout: truncate(res.stdout),
+      stderr: truncate(cleanPaths(res.stderr, artifact.src, artifact.fileName)),
+    };
+
+    if (res.spawnError) return { ...base, verdict: "RE", message: `Could not start program: ${res.spawnError}` };
+    if (res.timedOut) return { ...base, verdict: "TLE", message: `Killed after ${res.timeMs} ms` };
+    if (res.outputExceeded) return { ...base, verdict: "OLE", message: "Output limit exceeded" };
+    if (res.exitCode !== 0 || res.signal) return { ...base, verdict: "RE", message: describeExit(res.exitCode, res.signal) };
+    if (res.timeMs > tl) return { ...base, verdict: "TLE", message: `Took ${res.timeMs} ms (limit ${tl} ms)` };
+
+    if (req.expected === undefined || req.expected.trim() === "") return { ...base, verdict: "RAN" };
+    const diff = compareOutput(
+      req.expected,
+      res.stdout,
+      req.compareMode ?? this.settings.get("runner.compareMode"),
+      this.settings.get("runner.floatEpsilon"),
+    );
+    return diff ? { ...base, verdict: "WA", diff } : { ...base, verdict: "AC" };
+  }
+
+  private async acquire() {
+    while (this.running >= this.settings.get("runner.maxConcurrency")) {
+      await new Promise<void>((r) => this.waiters.push(r));
+    }
+    this.running++;
+  }
+
+  private release() {
+    this.running--;
+    this.waiters.shift()?.();
+  }
+}
+
+function truncate(s: string) {
+  return s.length > MAX_RETURNED_OUTPUT ? `${s.slice(0, MAX_RETURNED_OUTPUT)}\n... (truncated, ${s.length} chars total)` : s;
+}
+
+/** Replace the temp source path in diagnostics with the user's file name. */
+function cleanPaths(text: string, src: string, fileName = "main") {
+  return text.split(src).join(fileName).split(src.replace(/\\/g, "/")).join(fileName);
+}
+
+type ProcessResult = {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  signal: string | null;
+  timeMs: number;
+  timedOut: boolean;
+  outputExceeded: boolean;
+  spawnError?: string;
+};
+
+function runProcess(
+  command: string,
+  args: string[],
+  opts: { input?: string; timeoutMs: number; outputLimit?: number; cwd?: string },
+): Promise<ProcessResult> {
+  return new Promise((resolve) => {
+    const limit = opts.outputLimit ?? 64 * 1024 * 1024;
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    let outBytes = 0;
+    let errBytes = 0;
+    let timedOut = false;
+    let outputExceeded = false;
+    let spawnError: string | undefined;
+
+    const started = performance.now();
+    const child = spawn(command, args, {
+      cwd: opts.cwd,
+      windowsHide: true,
+      env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1" },
+    });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, opts.timeoutMs);
+
+    child.stdout.on("data", (b: Buffer) => {
+      outBytes += b.length;
+      if (outBytes > limit) {
+        outputExceeded = true;
+        child.kill("SIGKILL");
+        return;
+      }
+      out.push(b);
+    });
+    child.stderr.on("data", (b: Buffer) => {
+      errBytes += b.length;
+      if (errBytes <= limit) err.push(b);
+    });
+    child.on("error", (e) => {
+      spawnError = e.message;
+    });
+    // The program may exit without reading all of its input.
+    child.stdin.on("error", () => {});
+    child.stdin.end(opts.input ?? "");
+
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      resolve({
+        stdout: Buffer.concat(out).toString("utf8"),
+        stderr: Buffer.concat(err).toString("utf8"),
+        exitCode: code,
+        signal: timedOut || outputExceeded ? null : signal,
+        timeMs: Math.round(performance.now() - started),
+        timedOut,
+        outputExceeded,
+        spawnError,
+      });
+    });
+  });
+}

@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@import "@cp-ide/ui/styles.css";
+@import "dockview-react/dist/styles/dockview.css";
+
+/* Tailwind only scans this app by default; plugins and the UI kit live elsewhere. */
+@source "../../../packages/ui/src";
+@source "../../../plugins";
+
+/* Dockview mapped onto the shadcn tokens: rounded, gapped groups (LeetCode-style). */
+.dockview-theme-cp {
+  --dv-group-view-background-color: var(--panel);
+  --dv-tabs-and-actions-container-background-color: var(--panel);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--panel);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--panel);
+  --dv-tab-divider-color: transparent;
+  --dv-activegroup-visiblepanel-tab-color: var(--foreground);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--foreground);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-separator-border: transparent;
+  --dv-paneview-header-border-color: var(--border);
+  --dv-tabs-and-actions-container-height: 32px;
+  --dv-tabs-and-actions-container-font-size: 12px;
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: color-mix(in oklab, var(--primary) 60%, transparent);
+  --dv-drag-over-background-color: color-mix(in oklab, var(--primary) 18%, transparent);
+  --dv-drag-over-border-color: var(--primary);
+  --dv-icon-hover-background-color: var(--accent);
+  --dv-border-radius: 8px;
+  --dv-floating-box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+  background: var(--background);
+}
+
+.dockview-theme-cp .dv-groupview {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dockview-theme-cp .dv-tabs-and-actions-container {
+  border-bottom: 1px solid var(--border);
+}
+
+.dockview-theme-cp .dv-tab {
+  padding: 0 10px;
+}
+
+.dockview-theme-cp .dv-tab.dv-active-tab {
+  font-weight: 500;
+}
+
+.dockview-theme-cp .dv-groupview.dv-active-group > .dv-tabs-and-actions-container .dv-tab.dv-active-tab {
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
