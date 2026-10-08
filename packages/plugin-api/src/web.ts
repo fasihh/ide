@@ -17,6 +17,7 @@ import type {
   ExecRequest,
   ExecResult,
   Language,
+  LanguageServerAction,
   LanguageServerInfo,
   LibraryItem,
   LibraryKind,
@@ -386,7 +387,7 @@ export type LanguageServerState =
   | { phase: "idle" }
   | { phase: "starting" }
   | { phase: "ready" }
-  | { phase: "unavailable"; error: string; hint?: string }
+  | { phase: "unavailable"; error: string; hint?: string; action?: LanguageServerAction }
   | { phase: "error"; error: string };
 
 /**
@@ -399,6 +400,11 @@ export interface LanguageServersApi {
   useStates(): Record<string, LanguageServerState>;
   /** Restart one server, or all of them. */
   restart(id?: string): void;
+  /**
+   * Format a file shown in an editor (absolute path) with the language server for its language.
+   * Resolves to the formatted text, or null when no running server can format it.
+   */
+  format(path: string): Promise<string | null>;
 }
 
 export interface WebPluginContext {

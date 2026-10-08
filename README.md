@@ -42,7 +42,7 @@ All of these can be changed in **Keyboard Shortcuts** (Ctrl+Alt+K).
 | Ctrl+Enter / Ctrl+Shift+Enter | Run (tests, or the terminal for Playground-mode problems / the Playground) / run with custom input |
 | Ctrl+S · Shift+Alt+F | Save · format document |
 | Alt+N / Alt+Shift+N | New scratch problem / new problem |
-| F2 | Rename the current file |
+| F2 | Rename symbol (in code) · rename the current file (elsewhere) |
 | Alt+G | Playground (Ctrl+Enter runs it, type input in the Terminal) |
 | Alt+T | Add test |
 | Ctrl+Alt+I · `@` in the palette | Insert snippet (Tab moves between placeholders) |

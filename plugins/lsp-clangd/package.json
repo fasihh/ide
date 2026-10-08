@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@cp-ide/plugin-api": "workspace:*",
-    "@cp-ide/shared": "workspace:*"
+    "@cp-ide/shared": "workspace:*",
+    "fflate": "^0.8.2",
+    "hono": "^4.13.13"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

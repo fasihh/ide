@@ -1,4 +1,4 @@
-export { monaco, defineThemes, overflowWidgetsHost, cssVarHex } from "./monaco.ts";
+export { monaco, defineThemes, overflowWidgetsHost, cssVarHex, focusedEditor } from "./monaco.ts";
 export { CodeEditor, type CodeEditorProps, type MonacoEditor } from "./CodeEditor.tsx";
 export { registerLanguageFeatures } from "./lsp/features.ts";
 export { canonicalUri, toMarker } from "./lsp/convert.ts";

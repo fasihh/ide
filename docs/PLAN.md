@@ -124,7 +124,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
 - Programs see pipes, not a TTY: C++ prompts appear when flushed (`endl`/`flush`, or reading from
   `cin` while it is tied to `cout`); Python runs unbuffered. A real PTY (node-pty) could come later.
 
-## Phase 6 — Language intelligence (LSP) 🟡
+## Phase 6 — Language intelligence (LSP) ✅
 
 VS Code-level completions, hover, signature help, diagnostics as you type and navigation via clangd
 (C++) and basedpyright (Python). Design and status: [LSP_PLAN.md](LSP_PLAN.md).
@@ -137,7 +137,9 @@ VS Code-level completions, hover, signature help, diagnostics as you type and na
 - ✅ L2 Completion (+ resolve, snippets), hover, signature help, go to definition, find references
 - ✅ L3 `plugins/lsp-basedpyright`: bundled npm dependency, `pythonPath` from `python.interpreter`,
   type-checking level setting
-- ⬜ L4 Rename, formatting via LSP, inlay hints, optional clangd download, idle shutdown
+- ✅ L4 Rename symbol (F2 in code; current file only), formatting via the language server (format plugin
+  engine setting; clangd style setting), inlay hints (`editor.inlayHints`), idle shutdown
+  (`editor.languageServerIdleMinutes`, wakes on edit/focus), optional clangd download (status bar action)
 
 ## Phase 7 — Nice to have ⬜
 

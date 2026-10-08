@@ -6,7 +6,9 @@ import type {
   InitializeResult,
   PublishDiagnosticsParams,
   ServerCapabilities,
+  TextEdit,
 } from "vscode-languageserver-protocol";
+import { applyTextEdits } from "./edits.ts";
 import type { Disposable, JsonRpcConnection } from "./jsonrpc.ts";
 
 export interface LanguageClientOptions {
@@ -40,9 +42,12 @@ const CLIENT_CAPABILITIES: ClientCapabilities = {
     },
     definition: { linkSupport: false },
     references: {},
+    rename: { prepareSupport: true },
+    formatting: {},
+    inlayHint: {},
     publishDiagnostics: { relatedInformation: false },
   },
-  workspace: { configuration: true, workspaceFolders: true },
+  workspace: { configuration: true, workspaceFolders: true, inlayHint: { refreshSupport: true } },
   window: { workDoneProgress: false },
 };
 
@@ -54,6 +59,7 @@ export class LanguageClient implements Disposable {
   private serverCapabilities: ServerCapabilities = {};
   private readonly versions = new Map<string, number>();
   private readonly diagnosticsListeners: ((uri: string, diagnostics: Diagnostic[]) => void)[] = [];
+  private readonly requestListeners: (() => void)[] = [];
 
   constructor(
     readonly connection: JsonRpcConnection,
@@ -100,6 +106,13 @@ export class LanguageClient implements Disposable {
     this.connection.notify("textDocument/didChange", { textDocument: { uri, version }, contentChanges: [{ text }] });
   }
 
+  /** `text` (the document's current content) formatted by the server, or null if it cannot format. */
+  async format(uri: string, text: string, options: { tabSize: number; insertSpaces: boolean }): Promise<string | null> {
+    if (!this.serverCapabilities.documentFormattingProvider || !this.isOpen(uri)) return null;
+    const edits = await this.request<TextEdit[] | null>("textDocument/formatting", { textDocument: { uri }, options });
+    return applyTextEdits(text, edits ?? []);
+  }
+
   close(uri: string) {
     if (!this.versions.delete(uri)) return;
     this.connection.notify("textDocument/didClose", { textDocument: { uri } });
@@ -110,7 +123,14 @@ export class LanguageClient implements Disposable {
   }
 
   request<R>(method: string, params: unknown, signal?: AbortSignal): Promise<R> {
+    for (const cb of this.requestListeners) cb();
     return this.connection.request<R>(method, params, signal);
+  }
+
+  /** Called whenever the editor asks the server something (completion, hover…) — e.g. to track idleness. */
+  onRequest(cb: () => void): Disposable {
+    this.requestListeners.push(cb);
+    return { dispose: () => this.requestListeners.splice(this.requestListeners.indexOf(cb), 1) };
   }
 
   onDiagnostics(cb: (uri: string, diagnostics: Diagnostic[]) => void): Disposable {

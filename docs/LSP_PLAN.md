@@ -1,6 +1,6 @@
 # Plan: VS Code-level language intelligence (C++ & Python)
 
-Status: **L1–L3 implemented** (2026-10-08), L4 open — see [PLAN.md](PLAN.md). The sections below were the
+Status: **L1–L4 implemented** (2026-10-08) — see [PLAN.md](PLAN.md). The sections below were the
 original design; **"As built"** describes what exists and overrides them where they differ.
 
 ## As built
@@ -23,6 +23,16 @@ original design; **"As built"** describes what exists and overrides them where t
   served at once and refreshed in the background; a first-time prefix shows the cached shorter-prefix
   list (`withoutEditRanges`, marked incomplete) while the exact one loads; cached edits are moved to the
   cursor (`rebaseCompletion`). Scope completions (no receiver) always ask the server.
+- **L4**: rename (`registerRenameProvider`, prepareRename; edits to other files are rejected with a
+  message because their editor buffers are separate), inlay hints (refreshed on server request and after
+  each diagnostics publish), formatting through `ctx.languageServers.format(path)` (used by the format
+  plugin when its engine is "Language server"), idle shutdown in `language-session.ts` (timer reset by
+  edits and requests; `wake()` on edit or editor focus; markers kept), and resolution failures may carry an
+  `action` (web command) — clangd uses it for "Download clangd" (`plugins/lsp-clangd/src/installer.ts`:
+  GitHub releases API → zip → `fflate` → `<plugin data>/clangd/clangd_<ver>/bin`).
+- **Overflow widgets and keys**: Monaco widgets live in a host on `<body>`; the rename box is the one that
+  takes focus, so `monaco.ts` forwards Enter/Escape from it to the editor that opened it. App-level F2
+  (rename file) yields to `editor.renameSymbol` while a code editor has focus (`when` + `focusedEditor()`).
 - **Model URIs are real files** (`fileModelPath(abs)` in `@cp-ide/editor`): problem files and Playground
   files get language support; Library editors use `library:` URIs and are left alone.
 - **Installs are portable**: basedpyright is an npm dependency of its plugin (`pnpm install` brings it);

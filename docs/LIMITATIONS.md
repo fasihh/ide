@@ -33,7 +33,9 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | Go to definition / references only show locations in files open in the editor (not system headers like `bits/stdc++.h`) | Hover still shows the declaration; opening read-only header models is possible later |
 | One language server process per browser tab | Fine for a local single-user IDE |
 | Settings changed outside the app (editing `settings.json`, another tab) do not re-check a failed server | Click the server in the status bar, or run "Restart language servers" |
-| No rename, LSP formatting or inlay hints yet | Phase 6 L4 |
+| Rename symbol only edits the current file; a rename that would touch other files is refused with a message | Other files' editors keep separate buffers; cross-file rename needs a workspace-edit path through the workspace store |
+| Formatting through basedpyright is not possible (it has no formatter) | The format plugin falls back to the Python formatter command |
+| Idle language servers stop after `editor.languageServerIdleMinutes`; the first request after that waits for a restart (~1–3 s) | Set it to 0 to keep them running |
 | The first member list for a big library (numpy, torch) after the server starts takes ~2–3 s | Repeats come from the completion cache (~150 ms; letters after the dot ~10 ms) |
 | A cached member list is shown once before its background refresh lands, so right after redefining a name (e.g. `np = something_else`) the old members can appear one time | The refresh replaces it for the next request |
 

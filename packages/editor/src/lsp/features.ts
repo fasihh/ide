@@ -2,7 +2,20 @@ import { SwrCache } from "@cp-ide/cache";
 import { type CompletionResult, type LanguageClient, memberCompletionKeys, rebaseCompletion, withoutEditRanges } from "@cp-ide/lsp-client";
 import type * as lsp from "vscode-languageserver-protocol";
 import { monaco } from "../monaco.ts";
-import { type LspCompletionItem, hoverContents, toCompletionItem, toLocations, toLspPosition, toMarkdown, toMonacoRange } from "./convert.ts";
+import {
+  type LspCompletionItem,
+  editsForDocument,
+  hoverContents,
+  otherDocuments,
+  toCompletionItem,
+  toInlayHint,
+  toLocations,
+  toLspPosition,
+  toLspRange,
+  toMarkdown,
+  toMonacoRange,
+  toTextEdit,
+} from "./convert.ts";
 
 /**
  * Monaco providers backed by a language client. They answer only for models the client has open, so
@@ -146,9 +159,59 @@ export function registerLanguageFeatures(client: LanguageClient, languages: stri
         }),
       );
     }
+    if (caps.renameProvider) {
+      const prepare = typeof caps.renameProvider === "object" && caps.renameProvider.prepareProvider;
+      disposables.push(
+        monaco.languages.registerRenameProvider(language, {
+          async provideRenameEdits(model, position, newName, token) {
+            if (!owns(model)) return undefined;
+            const uri = model.uri.toString();
+            const edit = await ask<lsp.WorkspaceEdit>("textDocument/rename", { ...doc(model, position), newName }, token);
+            if (!edit) return { edits: [], rejectReason: "The language server could not rename this symbol" };
+            // Other files' editors keep their own buffers, so a partial rename would desynchronise them.
+            const others = otherDocuments(edit, uri);
+            if (others.length) return { edits: [], rejectReason: `Renaming across files is not supported yet (also used in ${others.map(fileName).join(", ")})` };
+            return { edits: editsForDocument(edit, uri).map((e) => ({ resource: model.uri, textEdit: toTextEdit(e), versionId: undefined })) };
+          },
+          resolveRenameLocation: prepare
+            ? async (model, position, token) => {
+                const word = model.getWordAtPosition(position);
+                const wordRange = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word?.startColumn ?? position.column, endColumn: word?.endColumn ?? position.column };
+                const res = await ask<lsp.PrepareRenameResult>("textDocument/prepareRename", doc(model, position), token);
+                if (!res) return { range: wordRange, text: "", rejectReason: "This symbol cannot be renamed" };
+                if ("defaultBehavior" in res) return { range: wordRange, text: word?.word ?? "" };
+                const range = toMonacoRange("range" in res ? res.range : res);
+                return { range, text: "placeholder" in res ? res.placeholder : model.getValueInRange(range) };
+              }
+            : undefined,
+        }),
+      );
+    }
+    if (caps.inlayHintProvider) {
+      const changed = new monaco.Emitter<void>();
+      // Servers ask for a refresh when hints elsewhere change (e.g. after an edit in another file), and
+      // published diagnostics mean a fresh analysis — hints asked for before it may have been empty.
+      disposables.push(
+        changed,
+        client.connection.onRequest("workspace/inlayHint/refresh", () => changed.fire()),
+        client.onDiagnostics(() => changed.fire()),
+      );
+      disposables.push(
+        monaco.languages.registerInlayHintsProvider(language, {
+          onDidChangeInlayHints: changed.event,
+          async provideInlayHints(model, range, token) {
+            if (!owns(model)) return undefined;
+            const hints = await ask<lsp.InlayHint[]>("textDocument/inlayHint", { textDocument: { uri: model.uri.toString() }, range: toLspRange(range) }, token);
+            return { hints: (hints ?? []).map(toInlayHint), dispose() {} };
+          },
+        }),
+      );
+    }
   }
   return { dispose: () => disposables.forEach((d) => d.dispose()) };
 }
+
+const fileName = (uri: string) => decodeURIComponent(uri.split("/").pop() ?? uri);
 
 const lineStart = (position: monaco.IPosition) => ({ startLineNumber: position.lineNumber, startColumn: 1 });
 

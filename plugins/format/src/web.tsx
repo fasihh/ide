@@ -21,6 +21,15 @@ export default definePlugin({
         return;
       }
       const source = buffers[activeFile]?.content ?? "";
+      if (config.get(language === "cpp" ? "format.cppEngine" : "format.pythonEngine") === "languageServer") {
+        const { problem, problemsRoot } = ctx.workspace.get();
+        const formatted = problem ? await ctx.languageServers.format(`${problemsRoot}/${problem.id}/${activeFile}`) : null;
+        if (formatted !== null) {
+          if (formatted !== source) ctx.workspace.setBuffer(activeFile, formatted);
+          return;
+        }
+        if (!quiet) ctx.notify.info("No language server can format this file", "Using the formatter command instead.");
+      }
       let res;
       try {
         res = await unwrap(api.index.$post({ json: { language, source } }));

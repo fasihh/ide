@@ -40,7 +40,7 @@ export class LanguageServerHost implements LanguageServersService, Disposable {
         const base = { id: server.id, name: server.name, languages: server.languages };
         return res.ok
           ? { ...base, available: true as const, initializationOptions: res.launch.initializationOptions, configuration: res.launch.configuration }
-          : { ...base, available: false as const, error: res.error, hint: res.hint };
+          : { ...base, available: false as const, error: res.error, hint: res.hint, action: res.action };
       }),
     );
   }

@@ -17,6 +17,7 @@ import type {
   ExecRequest,
   InteractRequest,
   Language,
+  LanguageServerAction,
   ExecResult,
   Problem,
   ProblemMetaPatch,
@@ -128,7 +129,10 @@ export interface LanguageServerLaunch {
   configuration?: Record<string, unknown>;
 }
 
-export type LanguageServerResolution = { ok: true; launch: LanguageServerLaunch } | { ok: false; error: string; hint?: string };
+export type LanguageServerResolution =
+  | { ok: true; launch: LanguageServerLaunch }
+  /** `action`: a web command offered in the status bar (e.g. "Download clangd"). */
+  | { ok: false; error: string; hint?: string; action?: LanguageServerAction };
 
 /**
  * A language server a plugin provides. Core owns everything else: the editor's LSP client, document

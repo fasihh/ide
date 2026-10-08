@@ -1,4 +1,5 @@
 import { BookMarked, Code2, FolderTree, Info, Keyboard, ListChecks, Settings, SquareTerminal, Terminal } from "lucide-react";
+import { focusedEditor } from "@cp-ide/editor";
 import { type PanelContribution, definePlugin } from "@cp-ide/plugin-api/web";
 import { EditorPanel, deleteFile, focusEditor, installDiagnostics, newFile, renameFile, revealLine } from "./editor/EditorPanel.tsx";
 import { TestsPanel, importTestFiles } from "./tests/TestsPanel.tsx";
@@ -106,6 +107,15 @@ export default definePlugin({
     ctx.commands.register({ id: "workspace.newProblem", title: "New problem…", category: "File", keybinding: "alt+shift+n", run: openNewProblemDialog });
     ctx.commands.register({ id: "editor.newFile", title: "New file in problem…", category: "File", run: (name?: string) => newFile(ctx, name) });
     ctx.commands.register({ id: "editor.renameFile", title: "Rename file…", category: "File", keybinding: "f2", run: (name?: string) => renameFile(ctx, name) });
+    // In a code editor F2 renames the symbol under the cursor (language server); elsewhere it renames the file.
+    ctx.commands.register({
+      id: "editor.renameSymbol",
+      title: "Rename symbol",
+      category: "Editor",
+      keybinding: "f2",
+      when: () => !!focusedEditor(),
+      run: () => focusedEditor()?.trigger("keyboard", "editor.action.rename", {}),
+    });
     ctx.commands.register({ id: "editor.deleteFile", title: "Delete file…", category: "File", run: (name?: string) => deleteFile(ctx, name) });
     ctx.commands.register({ id: "problems.rename", title: "Rename problem…", category: "Problem", run: (id?: string) => renameProblem(ctx, id) });
     ctx.commands.register({ id: "problems.move", title: "Move problem to…", category: "Problem", run: (id?: string) => moveProblem(ctx, id) });

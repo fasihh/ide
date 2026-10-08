@@ -133,6 +133,22 @@ export const coreSettings = defineSettings({
       { value: "off", label: "Off" },
     ],
   },
+  "editor.inlayHints": {
+    section: "Editor",
+    label: "Inlay hints",
+    description: "Faint inline labels from the language server: parameter names at call sites and deduced types.",
+    type: "boolean",
+    default: true,
+  },
+  "editor.languageServerIdleMinutes": {
+    section: "Editor",
+    label: "Stop idle language servers after (minutes)",
+    description: "Frees their memory; they start again when you edit or click into a file. 0 keeps them running.",
+    type: "number",
+    default: 10,
+    min: 0,
+    max: 240,
+  },
   "editor.vimMode": {
     section: "Editor",
     label: "Vim mode",

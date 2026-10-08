@@ -3,6 +3,33 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — Phase 6 L4 complete (rename, LSP formatting, inlay hints, idle shutdown, clangd download)
+
+- Rename: client `rename.prepareSupport`; `registerRenameProvider` (prepareRename → placeholder); edits for
+  other documents are refused with a message (`otherDocuments`, `editsForDocument` in convert.ts). Core
+  command `editor.renameSymbol` (F2, `when` a code editor has focus — `focusedEditor()` in
+  `@cp-ide/editor`) wins over file rename. Found in testing: Enter/Escape in the rename box never reached
+  Monaco (box lives in the `<body>` overflow host) → `monaco.ts` forwards them to the last focused editor.
+- Formatting: `LanguageClient.format(uri, text, options)` + pure `applyTextEdits` (tested, CRLF / clamping);
+  `ctx.languageServers.format(path)`; format plugin settings `format.cppEngine` / `format.pythonEngine`
+  (command | languageServer, falls back to the command); clangd `--fallback-style` from
+  `lsp-clangd.formatStyle` (default Google, matching the clang-format default).
+- Inlay hints: client `inlayHint` + `workspace.inlayHint.refreshSupport`; `registerInlayHintsProvider`,
+  refreshed on `workspace/inlayHint/refresh` and after diagnostics; core setting `editor.inlayHints`.
+- Idle shutdown: core setting `editor.languageServerIdleMinutes` (default 10); `LanguageClient.onRequest`
+  activity hook; session `touch()` / `wake()` (edit or editor focus); idle stop keeps markers.
+- clangd download: generic `action` on unavailable servers (shared `LanguageServerAction`, status bar runs
+  it); `lsp-clangd` `ClangdInstaller` (GitHub latest release → platform zip → `fflate` → plugin data dir,
+  zip-slip guarded, numeric version sort) + routes `GET /release`, `POST /install`; resolver order:
+  configured command → PATH → downloaded copy. Web command shows version and size and asks first.
+- Tests: lsp-client edits (3); clangd installer (3, fake GitHub + generated zips) and resolver (now 4).
+- Browser E2E (temp home): inlay hints `first:`/`second:`/`: vector<int>`; F2 → rename `total`→`answer`
+  (both uses, buffer synced); Shift+Alt+F via clangd → Google style without clang-format; idle 1 min →
+  clangd exited ~68 s after load, clicking the editor restarted it; missing clangd → warning item → dialog
+  "Download clangd 23.1.0? clangd-windows-23.1.0.zip (30 MB)…" (cancelled — no download performed).
+- Testing notes: in the hidden browser pane, Monaco cannot move focus into the rename box (animation
+  frames are paused), and modules imported from the console may be separate instances from the app's.
+
 ## 2026-10-08 — `@cp-ide/cache` + cached member completions
 
 - Feedback: after the stale-text fix, every `np.` still waited ~0.8 s (basedpyright recomputes types

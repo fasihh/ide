@@ -79,6 +79,7 @@ export function CodeEditor({ ctx, path, language, value, onChange, onMount, opti
   const minimap = ctx.settings.use("editor.minimap");
   const lineNumbers = ctx.settings.use("editor.lineNumbers");
   const vimSetting = ctx.settings.use("editor.vimMode");
+  const inlayHints = ctx.settings.use("editor.inlayHints");
   const vimMode = vim && vimSetting;
   const [editor, setEditor] = useState<MonacoEditor | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
@@ -119,6 +120,7 @@ export function CodeEditor({ ctx, path, language, value, onChange, onMount, opti
             bracketPairColorization: { enabled: true },
             renderWhitespace: "selection",
             stickyScroll: { enabled: false },
+            inlayHints: { enabled: inlayHints ? "on" : "off" },
             ...options,
             // dock panels are transformed; widgets must live outside them (see monaco.ts)
             fixedOverflowWidgets: true,

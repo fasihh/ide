@@ -11,7 +11,12 @@ export interface ClangdConfig {
   compiler: string;
   standard: string;
   flags: string;
+  /** `lsp-clangd.formatStyle`: style when formatting without a `.clang-format` file. */
+  formatStyle: string;
 }
+
+/** Offered in the status bar when no clangd can be started (the command is registered by web.tsx). */
+export const DOWNLOAD_ACTION = { label: "Download clangd", command: "lsp-clangd.install" };
 
 export const INSTALL_HINT =
   "Install clangd and make sure it is on PATH — e.g. `winget install LLVM.LLVM`, `pip install clangd`, `brew install llvm` or your package manager — or set the command in Settings → C++ language server.";
@@ -22,17 +27,27 @@ export const INSTALL_HINT =
  */
 const CLANGD_ARGS = ["--background-index=false", "--header-insertion=never", "--completion-style=detailed", "--pch-storage=memory", "--log=error"];
 
-export async function resolveClangd(config: ClangdConfig, exec: Exec): Promise<LanguageServerResolution> {
-  const [command, ...extraArgs] = splitArgs(config.command);
-  if (!command) return { ok: false, error: "No clangd command is configured", hint: INSTALL_HINT };
-  try {
-    await exec(command, ["--version"]);
-  } catch {
-    return { ok: false, error: `"${command}" could not be started`, hint: INSTALL_HINT };
+/**
+ * Which clangd to run: the configured command, else (when that is the default `clangd` and it is not on
+ * PATH) a copy downloaded by this plugin. Nothing found → unavailable, offering the download.
+ */
+export async function resolveClangd(config: ClangdConfig, exec: Exec, downloaded: () => Promise<string | null>): Promise<LanguageServerResolution> {
+  const [configured, ...extraArgs] = splitArgs(config.command);
+  if (!configured) return { ok: false, error: "No clangd command is configured", hint: INSTALL_HINT, action: DOWNLOAD_ACTION };
+  const runs = (cmd: string) => exec(cmd, ["--version"]).then(() => true, () => false);
+  let command: string | null = (await runs(configured)) ? configured : null;
+  if (!command && config.command.trim() === "clangd") {
+    const copy = await downloaded();
+    if (copy && (await runs(copy))) command = copy;
   }
+  if (!command) return { ok: false, error: `"${configured}" could not be started`, hint: INSTALL_HINT, action: DOWNLOAD_ACTION };
   return {
     ok: true,
-    launch: { command, args: [...CLANGD_ARGS, ...extraArgs], initializationOptions: { fallbackFlags: await fallbackFlags(config, exec) } },
+    launch: {
+      command,
+      args: [...CLANGD_ARGS, ...(config.formatStyle.trim() ? [`--fallback-style=${config.formatStyle.trim()}`] : []), ...extraArgs],
+      initializationOptions: { fallbackFlags: await fallbackFlags(config, exec) },
+    },
   };
 }
 

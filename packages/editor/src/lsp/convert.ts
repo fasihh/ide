@@ -87,3 +87,42 @@ export function toLocations(result: lsp.Location | lsp.Location[] | lsp.Location
       : { uri: monaco.Uri.parse(l.uri), range: toMonacoRange(l.range) },
   );
 }
+
+export const toLspRange = (r: monaco.IRange): lsp.Range => ({
+  start: { line: r.startLineNumber - 1, character: r.startColumn - 1 },
+  end: { line: r.endLineNumber - 1, character: r.endColumn - 1 },
+});
+
+/** The text edits a `WorkspaceEdit` makes to one document (`changes` or `documentChanges` form). */
+export function editsForDocument(edit: lsp.WorkspaceEdit, uri: string): lsp.TextEdit[] {
+  const target = canonicalUri(uri);
+  const fromChanges = Object.entries(edit.changes ?? {}).flatMap(([u, edits]) => (canonicalUri(u) === target ? edits : []));
+  const fromDocumentChanges = (edit.documentChanges ?? []).flatMap((change) =>
+    "textDocument" in change && canonicalUri(change.textDocument.uri) === target ? change.edits.filter((e): e is lsp.TextEdit => "range" in e) : [],
+  );
+  return [...fromChanges, ...fromDocumentChanges];
+}
+
+/** Documents other than `uri` that a `WorkspaceEdit` would change. */
+export function otherDocuments(edit: lsp.WorkspaceEdit, uri: string): string[] {
+  const target = canonicalUri(uri);
+  const uris = [...Object.keys(edit.changes ?? {}), ...(edit.documentChanges ?? []).map((c) => ("textDocument" in c ? c.textDocument.uri : "uri" in c ? c.uri : c.oldUri))];
+  return [...new Set(uris.map(canonicalUri))].filter((u) => u !== target);
+}
+
+const INLAY_KIND: Record<lsp.InlayHintKind, monaco.languages.InlayHintKind> = {
+  1: monaco.languages.InlayHintKind.Type,
+  2: monaco.languages.InlayHintKind.Parameter,
+};
+
+export function toInlayHint(hint: lsp.InlayHint): monaco.languages.InlayHint {
+  const tooltip = (t: string | lsp.MarkupContent | undefined) => (t === undefined ? undefined : typeof t === "string" ? t : toMarkdown(t));
+  return {
+    position: { lineNumber: hint.position.line + 1, column: hint.position.character + 1 },
+    label: typeof hint.label === "string" ? hint.label : hint.label.map((part) => ({ label: part.value, tooltip: tooltip(part.tooltip) })),
+    kind: hint.kind ? INLAY_KIND[hint.kind] : undefined,
+    tooltip: tooltip(hint.tooltip),
+    paddingLeft: hint.paddingLeft,
+    paddingRight: hint.paddingRight,
+  };
+}

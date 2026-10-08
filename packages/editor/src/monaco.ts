@@ -23,9 +23,28 @@ export function overflowWidgetsHost(): HTMLElement {
     overflowHost = document.createElement("div");
     overflowHost.className = "monaco-editor cp-monaco-overflow";
     Object.assign(overflowHost.style, { position: "absolute", top: "0", left: "0", width: "0", height: "0", zIndex: "40" });
+    overflowHost.addEventListener("keydown", forwardRenameKeys);
     document.body.appendChild(overflowHost);
   }
   return overflowHost;
+}
+
+/** The editor that last had text focus — the owner of a focused widget in the overflow host. */
+let lastFocusedEditor: monaco.editor.ICodeEditor | null = null;
+monaco.editor.onDidCreateEditor((editor) => editor.onDidFocusEditorText(() => (lastFocusedEditor = editor)));
+
+/**
+ * The rename box is the one overflow widget that takes keyboard focus. Monaco listens for keybindings
+ * on the editor's own container, so Enter / Escape typed in a box living here never reach it.
+ */
+function forwardRenameKeys(e: KeyboardEvent) {
+  if (!(e.target instanceof HTMLElement) || !e.target.closest(".rename-box") || !lastFocusedEditor) return;
+  const command = e.key === "Enter" ? "acceptRenameInput" : e.key === "Escape" ? "cancelRenameInput" : null;
+  if (!command) return;
+  e.preventDefault();
+  e.stopPropagation();
+  lastFocusedEditor.trigger("keyboard", command, {});
+  if (command === "cancelRenameInput") lastFocusedEditor.focus();
 }
 
 const canvas = document.createElement("canvas");
@@ -63,3 +82,6 @@ export function defineThemes() {
   });
   return isDark ? "cp-dark" : "cp-light";
 }
+
+/** The code editor that has keyboard focus, if any (for app commands that act on "the current editor"). */
+export const focusedEditor = () => monaco.editor.getEditors().find((e) => e.hasTextFocus());

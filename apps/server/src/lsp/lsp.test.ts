@@ -95,7 +95,7 @@ describe("LanguageServerHost", async () => {
     host.register({ id: "missing", name: "Missing", languages: ["python"], resolve: async () => ({ ok: false, error: "not installed", hint: "install it" }) });
     assert.deepEqual(await host.list(), [
       { id: "fake", name: "Fake", languages: ["cpp"], available: true, initializationOptions: { x: 1 }, configuration: undefined },
-      { id: "missing", name: "Missing", languages: ["python"], available: false, error: "not installed", hint: "install it" },
+      { id: "missing", name: "Missing", languages: ["python"], available: false, error: "not installed", hint: "install it", action: undefined },
     ]);
 
     const s = fakeSocket();

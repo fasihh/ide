@@ -205,7 +205,9 @@ Core connects it when an editor shows a real file (`file:` model URI, see `fileM
 its languages, syncs documents, shows diagnostics and the status bar item, and maps completion, hover,
 signature help, definition and references to Monaco. Resolve the command portably (PATH, a setting,
 or an npm dependency) rather than searching other tools' install folders. On the web side,
-`ctx.languageServers` offers `list()`, `useStates()` and `restart(id?)`.
+`ctx.languageServers` offers `list()`, `useStates()`, `restart(id?)` and `format(path)` (formatted text
+from the file's server, or null). A failed `resolve()` may return `action: { label, command }` — a web command
+of your plugin that the status bar offers (clangd: "Download clangd").
 
 ### Embedding an editor
 

@@ -9,4 +9,11 @@ export const clangdSettings = defineSettings({
     type: "string",
     default: "clangd",
   },
+  "lsp-clangd.formatStyle": {
+    section: "C++ language server",
+    label: "Formatting style",
+    description: "clang-format style used when formatting through clangd and no .clang-format file is found (Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU).",
+    type: "string",
+    default: "Google",
+  },
 });

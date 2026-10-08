@@ -13,7 +13,7 @@ function describe(name: string, state: LanguageServerState): string {
     case "error":
       return `${name} failed: ${state.error} — click to retry`;
     case "unavailable":
-      return `${name} is not available: ${state.error}${state.hint ? `\n${state.hint}` : ""}\nClick to check again.`;
+      return `${name} is not available: ${state.error}${state.hint ? `\n${state.hint}` : ""}\n${state.action ? `Click: ${state.action.label}` : "Click to check again."}`;
     default:
       return name;
   }
@@ -43,7 +43,7 @@ export function LanguageServerStatus({ ctx }: PanelProps) {
                 state.phase === "error" && "text-destructive",
                 state.phase === "unavailable" && "text-amber-500",
               )}
-              onClick={() => ctx.languageServers.restart(info.id)}
+              onClick={() => (state.phase === "unavailable" && state.action ? ctx.commands.execute(state.action.command) : ctx.languageServers.restart(info.id))}
             >
               <Icon className={cn("size-3", state.phase === "starting" && "animate-spin")} />
               {info.name}
