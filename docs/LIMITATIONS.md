@@ -34,6 +34,7 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | One language server process per browser tab | Fine for a local single-user IDE |
 | Settings changed outside the app (editing `settings.json`, another tab) do not re-check a failed server | Click the server in the status bar, or run "Restart language servers" |
 | No rename, LSP formatting or inlay hints yet | Phase 6 L4 |
+| basedpyright: the first member list for a big library (numpy, torch) takes ~2 s; right after "." the first letter re-asks the server (~1 s) before filtering becomes instant | basedpyright re-analyses after each edit and marks its first list incomplete by design; a Jedi-based server (pylsp) would trade type checking for lower latency |
 
 ## Layout & UI
 

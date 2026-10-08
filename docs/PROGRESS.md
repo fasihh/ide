@@ -3,6 +3,23 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — Fix: completion after "." used stale text
+
+- Report: `np.` offered nothing useful (looked like basedpyright missing global libraries).
+- Investigation (scratch LSP probe driving basedpyright like the editor): imports resolve fine —
+  `pythonPath` is applied (`Setting pythonPath … c:\Python312\python.exe`), torch/numpy/pandas resolve,
+  only uninstalled packages are unresolved. Real cause: document sync was debounced 150 ms, so the
+  completion request triggered by "." reached the server before the edit adding the "."; the server
+  completed `np` at module scope (199 globals: `print`, `range`…) instead of numpy's 658 members.
+  Affected clangd the same way.
+- Fix: `core/language-session.ts` sends `didChange` synchronously on every model change (full text).
+  Verified in the browser: typing `np.` without pausing lists numpy members; `np.zer` → `zeros`,
+  `zeros_like`, `trim_zeros`.
+- Measured basedpyright latency (numpy): first member completion ~2 s (cold), unchanged-file repeats
+  ~20 ms, each re-request after an edit ~0.7–0.9 s. basedpyright marks the first list incomplete on
+  purpose (it re-asks once with `TriggerForIncompleteCompletions`, then the list is complete and
+  Monaco filters locally) — so the first letter typed after "." waits ~1 s. Logged in LIMITATIONS.
+
 ## 2026-10-08 — Phase 6 L1–L3: language servers (core) + clangd / basedpyright plugins
 
 - Request: LSP registration in core, each LSP as a plugin; installs must work in a fresh environment

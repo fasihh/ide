@@ -3,8 +3,6 @@ import { canonicalUri, fileModelPath, monaco, registerLanguageFeatures, toMarker
 import type { LanguageServerState } from "@cp-ide/plugin-api/web";
 import type { LanguageServerInfo } from "@cp-ide/shared";
 
-/** Edits are sent after a short pause; documents in this IDE are small, so full text is fine. */
-const CHANGE_DELAY_MS = 150;
 const RECONNECT_DELAYS_MS = [500, 1000, 2000, 4000, 8000];
 
 export interface SessionEnvironment {
@@ -15,7 +13,7 @@ export interface SessionEnvironment {
   setState(id: string, state: LanguageServerState): void;
 }
 
-type OpenDocument = { model: monaco.editor.ITextModel; listener: monaco.IDisposable; timer?: ReturnType<typeof setTimeout> };
+type OpenDocument = { model: monaco.editor.ITextModel; listener: monaco.IDisposable };
 
 /**
  * The editor side of one language server: connects lazily, keeps open documents in sync, maps
@@ -49,12 +47,11 @@ export class LanguageServerSession {
   open(model: monaco.editor.ITextModel) {
     const uri = model.uri.toString();
     if (this.documents.has(uri)) return;
-    const entry: OpenDocument = { model, listener: { dispose() {} } };
-    entry.listener = model.onDidChangeContent(() => {
-      clearTimeout(entry.timer);
-      entry.timer = setTimeout(() => this.client?.change(uri, model.getValue()), CHANGE_DELAY_MS);
-    });
-    this.documents.set(uri, entry);
+    // Every edit is sent at once (full text; documents here are small). Monaco fires this before it
+    // asks for completions, so a request after typing "." always sees the "." — a delayed sync made
+    // `np.` complete against the old text and offer global names instead of numpy's members.
+    const listener = model.onDidChangeContent(() => this.client?.change(uri, model.getValue()));
+    this.documents.set(uri, { model, listener });
     if (this.client) this.client.open(uri, model.getLanguageId(), model.getValue());
     else void this.connect();
   }
@@ -63,7 +60,6 @@ export class LanguageServerSession {
     const uri = model.uri.toString();
     const entry = this.documents.get(uri);
     if (!entry) return;
-    clearTimeout(entry.timer);
     entry.listener.dispose();
     this.documents.delete(uri);
     this.client?.close(uri);
