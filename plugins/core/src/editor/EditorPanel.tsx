@@ -1,19 +1,18 @@
 import { useEffect, useRef } from "react";
-import { Check, ChevronDown, FilePlus2, Keyboard, Plus, X, Zap } from "lucide-react";
+import { Check, ChevronDown, Keyboard, Plus, X } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Kbd,
   Tooltip,
   cn,
 } from "@cp-ide/ui";
 import { CodeEditor as CodeEditorView, type MonacoEditor, fileModelPath, monaco } from "@cp-ide/editor";
+import { NewItemCards } from "../chrome/NewItems.tsx";
 import { parseDiagnostics } from "./diagnostics.ts";
 
 type CodeEditor = MonacoEditor;
@@ -208,16 +207,9 @@ function FileTabs({ ctx, files, activeFile }: { ctx: WebPluginContext; files: st
 
 function EmptyState({ ctx }: PanelProps) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-xs text-muted-foreground">
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-xs text-muted-foreground">
       <div className="text-sm text-foreground">No problem open</div>
-      <div className="flex flex-wrap justify-center gap-2">
-        <Button variant="secondary" onClick={() => ctx.commands.execute("workspace.newScratch")}>
-          <Zap /> Scratch problem <Kbd>Alt+N</Kbd>
-        </Button>
-        <Button variant="outline" onClick={() => ctx.commands.execute("workspace.newProblem")}>
-          <FilePlus2 /> New problem <Kbd>Alt+Shift+N</Kbd>
-        </Button>
-      </div>
+      <NewItemCards ctx={ctx} />
       <div>…or pick one from the explorer.</div>
     </div>
   );

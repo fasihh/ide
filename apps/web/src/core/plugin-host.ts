@@ -15,7 +15,7 @@ import { uiApi } from "./ui.ts";
 import { libraryApi } from "./library.ts";
 import { runApi } from "./run.ts";
 import { notify } from "./notify.ts";
-import { events, registry, serviceRegistry } from "./registry.ts";
+import { events, registry, serviceRegistry, useNewItems } from "./registry.ts";
 import { runnerApi } from "./runner.ts";
 import { getSetting, readSetting, updateSettings, useSetting, useSettings, useSettingsSchema } from "./settings.ts";
 import { themeApi } from "./theme.ts";
@@ -79,6 +79,7 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
     statusBar: { register: (item) => disposables.add(registry.addStatusBarItem({ ...item, owner: ctx })) },
     toolbar: { register: (item) => disposables.add(registry.addToolbarItem({ ...item, owner: ctx })) },
     overlays: { register: (overlay) => disposables.add(registry.addOverlay({ ...overlay, owner: ctx })) },
+    newItems: { register: (item) => disposables.add(registry.addNewItem(item)), useList: useNewItems },
     services: {
       provide: (name, service) => disposables.add(serviceRegistry.provide(name, service)),
       get: <T extends object>(name: string) => serviceRegistry.get(name) as T | undefined,

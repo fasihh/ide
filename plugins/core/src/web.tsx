@@ -1,4 +1,4 @@
-import { BookMarked, Code2, FolderTree, Info, Keyboard, ListChecks, Settings, SquareTerminal, Terminal } from "lucide-react";
+import { BookMarked, Code2, FilePlus2, FolderTree, Info, Keyboard, ListChecks, Settings, SquareTerminal, Terminal, Zap } from "lucide-react";
 import { focusedEditor } from "@cp-ide/editor";
 import { type PanelContribution, definePlugin } from "@cp-ide/plugin-api/web";
 import { EditorPanel, deleteFile, focusEditor, installDiagnostics, newFile, renameFile, revealLine } from "./editor/EditorPanel.tsx";
@@ -10,7 +10,8 @@ import { ProblemPanel } from "./problem/ProblemPanel.tsx";
 import { SettingsPanel } from "./settings/SettingsPanel.tsx";
 import { KeybindingsPanel } from "./settings/KeybindingsPanel.tsx";
 import { openNewProblemDialog } from "./chrome/NewProblemDialog.tsx";
-import { LanguageStatus, NewMenu, RootStatus, RunButton, SaveStatus, TestsStatus } from "./chrome/items.tsx";
+import { LanguageStatus, RootStatus, RunButton, SaveStatus, TestsStatus } from "./chrome/items.tsx";
+import { NewMenu } from "./chrome/NewItems.tsx";
 import { LanguageServerStatus } from "./chrome/LanguageServerStatus.tsx";
 import { applyLayout, deleteLayout, saveLayout } from "./chrome/layouts.ts";
 import { copyPath, deleteProblem, moveProblem, renameProblem } from "./explorer/actions.ts";
@@ -139,7 +140,7 @@ export default definePlugin({
       category: "Problem",
       run: () => {
         const p = ctx.workspace.get().problem;
-        if (!p?.meta.interactive) return ctx.notify.info("Not an interactive problem", "Turn it on with Problem: Toggle interactive problem.");
+        if (!p?.meta.interactive) return ctx.notify.info("Not an interactive problem", "Switch it with the Mode control in the Problem panel, or the command Problem: Set mode: Interactive.");
         ctx.workspace.setActiveFile(p.meta.interactor ?? "interactor.cpp");
         ctx.panels.open("core.editor");
       },
@@ -188,6 +189,8 @@ export default definePlugin({
 
     // ---- chrome ----
     ctx.toolbar.register({ id: "core.new", order: 0, component: NewMenu });
+    ctx.newItems.register({ id: "core.scratch", label: "Scratch problem", description: "An untitled problem, ready to code", icon: Zap, command: "workspace.newScratch", order: 0 });
+    ctx.newItems.register({ id: "core.problem", label: "Problem…", description: "Name, platform, limits, template and mode", icon: FilePlus2, command: "workspace.newProblem", order: 10 });
     ctx.toolbar.register({ id: "core.run", order: 10, component: RunButton });
     ctx.statusBar.register({ id: "core.language", align: "left", order: 0, component: LanguageStatus });
     ctx.statusBar.register({ id: "core.root", align: "left", order: 10, component: RootStatus });

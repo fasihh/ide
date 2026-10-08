@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import type {
   CommandContribution,
   CoreEvents,
   OverlayContribution,
   Disposable,
+  NewItemContribution,
   PanelContribution,
   StatusBarContribution,
   UiItemContribution,
@@ -21,6 +23,7 @@ type RegistryState = {
   statusBar: Owned<StatusBarContribution>[];
   toolbar: Owned<UiItemContribution>[];
   overlays: Owned<OverlayContribution>[];
+  newItems: NewItemContribution[];
   settings: { pluginId: string; descriptors: SettingDescriptors }[];
 };
 
@@ -31,6 +34,7 @@ export const useRegistry = create<RegistryState>(() => ({
   statusBar: [],
   toolbar: [],
   overlays: [],
+  newItems: [],
   settings: [],
 }));
 
@@ -51,12 +55,19 @@ export const registry = {
   addStatusBarItem: (i: Owned<StatusBarContribution>) => add("statusBar", i, (x) => x.id === i.id),
   addToolbarItem: (i: Owned<UiItemContribution>) => add("toolbar", i, (x) => x.id === i.id),
   addOverlay: (o: Owned<OverlayContribution>) => add("overlays", o, (x) => x.id === o.id),
+  addNewItem: (n: NewItemContribution) => add("newItems", n, (x) => x.id === n.id),
   addSettings: (pluginId: string, descriptors: SettingDescriptors) => add("settings", { pluginId, descriptors }),
   panel: (id: string) => useRegistry.getState().panels.find((p) => p.id === id),
   command: (id: string) => useRegistry.getState().commands.find((c) => c.id === id),
   panelsList: () => [...useRegistry.getState().panels],
   commandsList: () => [...useRegistry.getState().commands],
 };
+
+/** New-menu entries in display order (a React hook). */
+export function useNewItems(): NewItemContribution[] {
+  const items = useRegistry((s) => s.newItems);
+  return useMemo(() => [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), [items]);
+}
 
 export const events = new Emitter<CoreEvents>();
 

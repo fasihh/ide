@@ -51,6 +51,14 @@ export default definePlugin({
       run: () => saveFile(),
     });
     ctx.commands.register({ id: "playground.new", title: "New playground file…", category: "Playground", run: () => newPlaygroundFile(ctx) });
+    ctx.newItems.register({
+      id: "playground.file",
+      label: "Playground file",
+      description: "Code with a live terminal — no tests needed",
+      icon: FlaskConical,
+      command: "playground.new",
+      order: 20,
+    });
     ctx.commands.register({ id: "playground.saveAsProblem", title: "Save playground file as problem…", category: "Playground", run: () => saveAsProblem(ctx) });
     ctx.commands.register({ id: "playground.download", title: "Download playground file", category: "Playground", run: downloadPlaygroundFile });
     ctx.commands.register({ id: "playground.runProblem", title: "Run problem in terminal", category: "Run", run: runProblemInTerminal });

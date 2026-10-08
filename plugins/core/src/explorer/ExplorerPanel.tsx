@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowUpDown,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -9,17 +8,11 @@ import {
   FolderInput,
   MoreHorizontal,
   Pencil,
-  RefreshCw,
-  Search,
-  Tag,
   Trash2,
-  X,
-  Zap,
 } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
-import type { ProblemStatus, ProblemSummary } from "@cp-ide/shared";
+import type { ProblemSummary } from "@cp-ide/shared";
 import {
-  Button,
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -29,31 +22,16 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
   ContextMenuTrigger,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  Input,
-  Tooltip,
   cn,
 } from "@cp-ide/ui";
 import { openNewProblemDialog } from "../chrome/NewProblemDialog.tsx";
 import { copyPath, deleteProblem, moveProblem, renameProblem, setStatus } from "./actions.ts";
+import { ExplorerToolbar } from "./ExplorerToolbar.tsx";
+import { DEFAULT_VIEW, STATUS_DOT, STATUS_LABEL, STATUS_RANK, type Sort, type ViewState } from "./view.ts";
 
-const STATUS_DOT: Record<ProblemStatus, string> = {
-  todo: "bg-muted-foreground/40",
-  attempted: "bg-verdict-tle",
-  solved: "bg-verdict-ac",
-};
-const STATUS_LABEL: Record<ProblemStatus, string> = { todo: "To do", attempted: "Tried", solved: "Solved" };
-const STATUS_RANK: Record<ProblemStatus, number> = { attempted: 0, todo: 1, solved: 2 };
 const RECENT_COUNT = 5;
 
-type Sort = "recent" | "name" | "status";
-type ViewState = { sort: Sort; status: ProblemStatus | "all"; tags: string[]; collapsed: string[]; recentOpen: boolean };
 const VIEW_KEY = "cp-ide.explorer.v1";
-const DEFAULT_VIEW: ViewState = { sort: "recent", status: "all", tags: [], collapsed: [], recentOpen: true };
 
 function useViewState() {
   const [view, setView] = useState<ViewState>(() => {
@@ -257,112 +235,7 @@ export function ExplorerPanel({ ctx }: PanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-1 px-2">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input className="h-6 pl-7" placeholder="Filter problems" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
-        <Tooltip content="New scratch problem (Alt+N)">
-          <Button variant="ghost" size="icon-sm" onClick={() => ctx.commands.execute("workspace.newScratch")}>
-            <Zap />
-          </Button>
-        </Tooltip>
-        <Tooltip content="New problem (Alt+Shift+N)">
-          <Button variant="ghost" size="icon-sm" onClick={() => ctx.commands.execute("workspace.newProblem")}>
-            <FilePlus2 />
-          </Button>
-        </Tooltip>
-        <Tooltip content="Refresh">
-          <Button variant="ghost" size="icon-sm" onClick={() => ctx.workspace.refreshProblems()}>
-            <RefreshCw className={cn(loading && "animate-spin")} />
-          </Button>
-        </Tooltip>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1 border-b px-2 pb-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
-          {(["all", "todo", "attempted", "solved"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setView({ status: s })}
-              className={cn(
-                "flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-[0.625rem] whitespace-nowrap",
-                view.status === s ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {s !== "all" && <span className={cn("size-1.5 rounded-full", STATUS_DOT[s])} />}
-              {s === "all" ? "All" : STATUS_LABEL[s]}
-              <span className="tabular-nums opacity-60">{counts[s]}</span>
-            </button>
-          ))}
-        </div>
-        {allTags.length > 0 && (
-          <DropdownMenu>
-            <Tooltip content="Filter by tag">
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={cn(
-                    "flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded px-1 text-[0.625rem]",
-                    view.tags.length ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Tag className="size-3" />
-                  {view.tags.length > 0 && view.tags.length}
-                </button>
-              </DropdownMenuTrigger>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="max-h-72">
-              <DropdownMenuLabel>Tags (all must match)</DropdownMenuLabel>
-              {allTags.map((t) => (
-                <DropdownMenuCheckboxItem
-                  key={t}
-                  checked={view.tags.includes(t)}
-                  onSelect={(e) => e.preventDefault()}
-                  onCheckedChange={(on) => setView({ tags: on ? [...view.tags, t] : view.tags.filter((x) => x !== t) })}
-                >
-                  {t}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        <DropdownMenu>
-          <Tooltip content="Sort">
-            <DropdownMenuTrigger asChild>
-              <button className="flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded px-1 text-[0.625rem] text-muted-foreground hover:text-foreground">
-                <ArrowUpDown className="size-3" />
-              </button>
-            </DropdownMenuTrigger>
-          </Tooltip>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            {(
-              [
-                ["recent", "Recently changed"],
-                ["name", "Name"],
-                ["status", "Status (tried first)"],
-              ] as const
-            ).map(([id, label]) => (
-              <DropdownMenuCheckboxItem key={id} checked={view.sort === id} onCheckedChange={() => setView({ sort: id })}>
-                {label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {filtering && (
-          <Tooltip content="Clear filters">
-            <button
-              className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setQuery("");
-                setView({ status: "all", tags: [] });
-              }}
-            >
-              <X className="size-3" />
-            </button>
-          </Tooltip>
-        )}
-      </div>
+      <ExplorerToolbar ctx={ctx} query={query} setQuery={setQuery} view={view} setView={setView} counts={counts} allTags={allTags} loading={loading} />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-1">
         {recent.length > 0 && (

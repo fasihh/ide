@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { create } from "zustand";
 import type { PanelProps } from "@cp-ide/plugin-api/web";
 import type { Language } from "@cp-ide/shared";
+import { ModePicker, type ProblemMode, setMode } from "../problem/ModeControl.tsx";
 import {
   Button,
   Combobox,
@@ -46,6 +47,7 @@ export function NewProblemDialog({ ctx }: PanelProps) {
     language: defaultLanguage as Language,
     timeLimit: "",
     template: DEFAULT_TEMPLATE,
+    mode: "standard" as ProblemMode,
   });
   const [busy, setBusy] = useState(false);
 
@@ -57,6 +59,7 @@ export function NewProblemDialog({ ctx }: PanelProps) {
         url: "",
         language: defaultLanguage,
         template: DEFAULT_TEMPLATE,
+        mode: "standard",
         platform: prefill.platform ?? f.platform,
         group: prefill.group ?? f.group,
       }));
@@ -83,6 +86,8 @@ export function NewProblemDialog({ ctx }: PanelProps) {
         timeLimitMs: form.timeLimit ? Number(form.timeLimit) : undefined,
         template: form.template || undefined,
       });
+      // The new problem is now open; the mode is set like any other mode change.
+      if (form.mode !== "standard") await setMode(ctx, form.mode);
       useNewProblemDialog.setState({ open: false });
     } catch (err) {
       ctx.notify.error("Could not create problem", err instanceof Error ? err.message : String(err));
@@ -158,6 +163,10 @@ export function NewProblemDialog({ ctx }: PanelProps) {
                   ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Mode</Label>
+            <ModePicker ctx={ctx} value={form.mode} onChange={(mode) => setForm((f) => ({ ...f, mode }))} />
           </div>
           <DialogFooter className="pt-1">
             <Button type="button" variant="ghost" onClick={() => useNewProblemDialog.setState({ open: false })}>

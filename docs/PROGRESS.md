@@ -3,6 +3,28 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Palette sweep, "New" entries from plugins, explorer header redesign
+
+- Report: creating a playground file from the palette "didn't work". Cause: the file was created but
+  the Playground panel stayed behind the Code tab. `newPlaygroundFile` now opens `playground.editor`.
+- Palette sweep (temp home, all 66 commands run through the registry like the palette does, dialogs
+  recorded and dismissed): everything works. Fixed the stale "Toggle interactive problem" hint in
+  `problems.openInteractor`. Unverified in the hidden test pane only: `problems.copyPath` (clipboard
+  needs a focused page).
+- Plugin API: `ctx.newItems` (`NewItemContribution`: label, description, icon, command, order). Core
+  registers Scratch problem / Problem…; the playground registers "Playground file". Rendered by
+  `chrome/NewItems.tsx`: top bar New menu, explorer + menu, cards on the empty editor (shortcuts come
+  from the commands — the old hard-coded "Alt+N" labels are gone).
+- New Problem dialog: Mode field (`ModePicker`, shared with the Problem panel's `ModeSegmented`);
+  non-standard modes are applied with `setMode` after creating.
+- Explorer header (feedback: cluttered): one row — search with a view-options button inside it (status
+  with counts, tags, sort, refresh; badge = active filters) and a + New menu. Active filters show as
+  removable chips under the search, only while set. Constants moved to `explorer/view.ts`; toolbar in
+  `explorer/ExplorerToolbar.tsx`.
+- Verified in the browser: palette → New playground file → Playground in front with the new file;
+  New menu and explorer + list all three entries; dialog with Playground mode → `runMode: playground`;
+  palette → Save playground file as problem → Python problem in Playground mode, opened in Code.
+
 ## 2026-10-08 — Phase 6 L4 complete (rename, LSP formatting, inlay hints, idle shutdown, clangd download)
 
 - Rename: client `rename.prepareSupport`; `registerRenameProvider` (prepareRename → placeholder); edits for

@@ -1,42 +1,8 @@
-import { ChevronDown, FilePlus2, Loader2, Play, Square, Zap } from "lucide-react";
+import { Loader2, Play, Square } from "lucide-react";
 import type { PanelProps, RunTarget } from "@cp-ide/plugin-api/web";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-  Kbd,
-  Tooltip,
-  cn,
-} from "@cp-ide/ui";
-import { NewProblemDialog } from "./NewProblemDialog.tsx";
+import { Button, Kbd, Tooltip, cn } from "@cp-ide/ui";
 
 // ---- toolbar ----
-
-export function NewMenu({ ctx }: PanelProps) {
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm">
-            New <ChevronDown className="size-3 opacity-60" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center">
-          <DropdownMenuItem onSelect={() => ctx.commands.execute("workspace.newScratch")}>
-            <Zap /> Scratch problem <DropdownMenuShortcut>Alt+N</DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => ctx.commands.execute("workspace.newProblem")}>
-            <FilePlus2 /> Problem… <DropdownMenuShortcut>Alt+Shift+N</DropdownMenuShortcut>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <NewProblemDialog ctx={ctx} />
-    </>
-  );
-}
 
 function TargetButton({ ctx, target }: PanelProps & { target: RunTarget }) {
   const busy = target.useBusy?.() ?? false;

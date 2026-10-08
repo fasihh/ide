@@ -224,6 +224,21 @@ export interface UiItemContribution {
   component: ComponentType<PanelProps>;
 }
 
+/**
+ * Something users can create, listed in the top bar's New menu and on the empty editor: a problem, a
+ * playground file… Selecting it runs `command`, whose keybinding is shown next to it.
+ */
+export interface NewItemContribution {
+  id: string;
+  label: string;
+  /** One line shown under the label on the empty editor. */
+  description?: string;
+  icon?: ComponentType<{ className?: string }>;
+  command: string;
+  /** Lower comes first. */
+  order?: number;
+}
+
 /** A component rendered at the app root, above the layout (palettes, dialogs, HUDs). */
 export interface OverlayContribution {
   id: string;
@@ -417,6 +432,8 @@ export interface WebPluginContext {
   readonly statusBar: { register(item: StatusBarContribution): Disposable };
   readonly toolbar: { register(item: UiItemContribution): Disposable };
   readonly overlays: { register(overlay: OverlayContribution): Disposable };
+  /** Entries for the New menu and the empty editor (`useList` is a React hook, sorted by `order`). */
+  readonly newItems: { register(item: NewItemContribution): Disposable; useList(): NewItemContribution[] };
   readonly services: ServicesApi;
   readonly events: EventsApi;
   readonly layout: LayoutApi;

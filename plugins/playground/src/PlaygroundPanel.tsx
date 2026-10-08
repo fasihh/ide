@@ -38,7 +38,14 @@ export async function newPlaygroundFile(ctx: WebPluginContext) {
   let n = 1;
   while (names.includes(`scratch${n}.cpp`)) n++;
   const name = await ctx.ui.prompt({ title: "New playground file (.cpp or .py)", value: `scratch${n}.cpp`, validate: (v) => validName(names, v) });
-  if (name) await createFile(name).catch((e) => ctx.notify.error("Could not create file", String(e?.message ?? e)));
+  if (!name) return;
+  try {
+    await createFile(name);
+  } catch (e) {
+    return ctx.notify.error("Could not create file", String((e as Error)?.message ?? e));
+  }
+  // From the palette or the New menu the Playground may be hidden behind the Code tab.
+  ctx.panels.open("playground.editor");
 }
 
 async function renamePlaygroundFile(ctx: WebPluginContext, from: string) {

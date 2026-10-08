@@ -72,17 +72,22 @@ export function ModeChip({ ctx, meta }: { ctx: WebPluginContext; meta: ProblemMe
 
 /** Segmented control for the Problem panel. */
 export function ModeSegmented({ ctx, meta }: { ctx: WebPluginContext; meta: ProblemMeta }) {
-  const current = modeOf(meta);
+  return <ModePicker ctx={ctx} value={modeOf(meta)} onChange={(mode) => setMode(ctx, mode)} />;
+}
+
+/** The three modes as a segmented control (controlled). */
+export function ModePicker({ ctx, value, onChange }: { ctx: WebPluginContext; value: ProblemMode; onChange: (mode: ProblemMode) => void }) {
   return (
     <div className="grid grid-cols-3 gap-1 rounded-md bg-muted p-0.5">
       {MODES.map((m) => (
         <Tooltip key={m.id} content={m.description}>
           <button
+            type="button"
             disabled={m.id === "playground" && !playgroundAvailable(ctx)}
-            onClick={() => setMode(ctx, m.id)}
+            onClick={() => onChange(m.id)}
             className={cn(
               "flex h-6 cursor-pointer items-center justify-center gap-1 rounded text-[0.6875rem] disabled:cursor-not-allowed disabled:opacity-40",
-              current === m.id ? `bg-background font-medium shadow-sm ${m.tone}` : "text-muted-foreground hover:text-foreground",
+              value === m.id ? `bg-background font-medium shadow-sm ${m.tone}` : "text-muted-foreground hover:text-foreground",
             )}
           >
             <m.icon className="size-3" />

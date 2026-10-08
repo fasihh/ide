@@ -57,6 +57,7 @@ export default definePlugin({
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
 | `panels` | `register`, `open`, `close`, `toggle`, `isOpen`, `useIsOpen`, `active`, `useActive`, `list` |
 | `commands` | `register` (with optional `keybinding` and `when` condition), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
+| `newItems` | `register({ id, label, description?, icon?, command, order? })`, `useList()` — entries for the top bar New menu, the explorer's + menu and the empty editor (shortcut shown from `command`) |
 | `run` | run targets for the top-bar Run / Ctrl+Enter: `register({ id, label, priority, applies, run, useBusy?, stop? })`, `current`, `useCurrent`, `runCurrent` |
 | `layout` | `registerPreset({ id, name, panels })`, `applyPreset`, `listPresets`, `saveCurrent(name)`, `deleteSaved`, `reset` |
 | `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive })` — all promise-based |
