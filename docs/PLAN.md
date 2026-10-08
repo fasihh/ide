@@ -115,6 +115,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started
   panel is active, problems in **Playground mode** in the terminal, tests otherwise
 - ✅ Per-problem mode: Standard / Interactive / Playground (Tests header chip, Problem panel, palette);
   "Save as problem" creates Playground-mode problems
+- ✅ Python warm start for terminal runs: a standby process preloads the last script's leading imports
+  (torch: ~2.4 s → ~0.5 s per run); setting `python.warmStart`
 - ✅ Platform: WebSocket endpoints for server plugins (`ctx.websocket`, local-origin check),
   `runner.start` live process sessions, keybinding `when` conditions (Ctrl+Enter / Ctrl+S act on the
   playground while it has focus), shared `@cp-ide/editor` package (`CodeEditor` with settings, theme, Vim)

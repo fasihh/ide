@@ -299,6 +299,45 @@ describe("live sessions", () => {
     assert.equal((await stopped).message, "Stopped");
   });
 
+  test("Python warm start: next run reuses a process with the last script's imports loaded", async () => {
+    const run = async (source: string, stdin?: string) => {
+      const s = runner.start(await compile("python", source))!;
+      let out = "";
+      let err = "";
+      s.onStdout((d) => (out += d));
+      s.onStderr((d) => (err += d));
+      const exit = new Promise<{ exitCode: number | null }>((r) => s.onExit(r));
+      if (stdin !== undefined) {
+        s.write(stdin);
+        s.end();
+      }
+      return { ...(await exit), out, err };
+    };
+    const probe = 'import sys\nprint("fractions" in sys.modules, __name__)\n';
+
+    const first = await run('"""doc"""\nimport fractions\nimport sys\nprint(sys.argv[0].endswith(".py"))\n');
+    assert.equal(first.out.trim(), "True");
+    // The standby preloaded `fractions` from the previous script; the program itself runs as __main__.
+    assert.equal((await run(probe)).out.trim(), "True __main__");
+
+    const crash = await run('import sys\ndef f():\n    raise ValueError("boom")\nf()\n');
+    assert.equal(crash.exitCode, 1);
+    assert.match(crash.err, /main\.py", line 4/);
+    assert.match(crash.err, /ValueError: boom/);
+    assert.doesNotMatch(crash.err, /runpy|cp-ide-warm/, "bootstrap frames are hidden");
+
+    // Raw stdin reads see everything the user typed (the bootstrap reads its control line unbuffered).
+    const raw = await run("import sys\nprint(sys.stdin.buffer.read().decode().upper(), end='')\n", "abc\ndef\n");
+    assert.equal(raw.out.replace(/\r\n/g, "\n"), "ABC\nDEF\n");
+
+    await settings.update({ "python.warmStart": false });
+    try {
+      assert.equal((await run(probe)).out.trim(), "False __main__");
+    } finally {
+      await settings.update({ "python.warmStart": true });
+    }
+  });
+
   test("websocket router rejects foreign origins", async () => {
     const http = await import("node:http");
     const { WebSocket } = await import("ws");

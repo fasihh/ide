@@ -3,6 +3,19 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — Python warm start for terminal runs
+
+- Feedback: every Playground run of a torch script paid the full import time. Measured: `.pyc` files
+  were all present; `import torch` alone costs ~2.8 s per fresh process, so a warm process was needed.
+- `apps/server/src/runner/warm-python.ts`: live Python runs go through a bootstrap
+  (`~/.cp-ide/cache/cp-ide-warm.py`). After a run exits, a standby process imports the script's
+  leading import block (ast, stops at the first other statement) and waits for the next script path on
+  stdin (read byte by byte so user stdin is untouched), then runs it with `runpy` as `__main__` and
+  trims bootstrap frames from tracebacks. Fresh process per run — no state carries over. Idle standby
+  is killed after 15 min. Only `runner.start` (terminal runs) uses it; tests stay cold.
+- Setting `python.warmStart` (default on). Bench (real torch): run 1 2384 ms, then 652 / 534 / 479 ms.
+- Server test added (preload reuse, `__main__`, traceback trimming, raw stdin, setting off).
+
 ## 2026-10-08 — One Run button, per-problem Playground mode
 
 - Feedback: two Run buttons in the Playground, and problems saved from the playground ran tests.

@@ -15,6 +15,7 @@ import { CACHE_DIR } from "../paths.ts";
 import type { SettingsService } from "../services/settings.ts";
 import { describeExit } from "./exit-codes.ts";
 import { runInteractive } from "./interact.ts";
+import { WarmPython } from "./warm-python.ts";
 
 type Artifact = { command: string; args: string[]; src: string; fileName?: string };
 
@@ -34,6 +35,7 @@ export class RunnerService implements RunnerApi {
   private inflight = new Map<string, Promise<CompileResult>>();
   private running = 0;
   private waiters: (() => void)[] = [];
+  private warm = new WarmPython();
 
   constructor(
     private settings: SettingsService,
@@ -131,11 +133,15 @@ export class RunnerService implements RunnerApi {
     if (!artifact) return null;
     const outputLimit = opts.outputLimit ?? this.settings.get("runner.outputLimitKb") * 1024;
     const started = performance.now();
-    const child = spawn(artifact.command, artifact.args, {
-      cwd: CACHE_DIR,
-      windowsHide: true,
-      env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1", PYTHONUNBUFFERED: "1" },
-    });
+    const warmStart = artifact.src.endsWith(".py") && this.settings.get("python.warmStart");
+    if (!warmStart) this.warm.clear();
+    const child = warmStart
+      ? this.warm.take(artifact.command, artifact.src).child
+      : spawn(artifact.command, artifact.args, {
+          cwd: CACHE_DIR,
+          windowsHide: true,
+          env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1", PYTHONUNBUFFERED: "1" },
+        });
     const listeners = { out: [] as ((d: string) => void)[], err: [] as ((d: string) => void)[], exit: [] as ((i: { exitCode: number | null; timeMs: number; message?: string }) => void)[] };
     let reason: string | undefined;
     let spawnError: string | undefined;
@@ -167,6 +173,8 @@ export class RunnerService implements RunnerApi {
       const timeMs = Math.round(performance.now() - started);
       const message = spawnError ? `Could not start program: ${spawnError}` : (reason ?? (code !== 0 || signal ? describeExit(code, signal) : undefined));
       for (const l of listeners.exit) l({ exitCode: code, timeMs, message });
+      // Get the next run's process ready while the user reads this one's output.
+      if (warmStart && !spawnError) this.warm.prepare(artifact.command, artifact.src);
     });
     return {
       write: (data) => {
