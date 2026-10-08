@@ -72,7 +72,7 @@ test("LanguageClient handshake, versioned full sync and diagnostics", async () =
     clientName: "test",
     rootUri: "file:///root",
     initializationOptions: { a: 1 },
-    configuration: { python: { pythonPath: "py" } },
+    configuration: { python: { pythonPath: "py" }, basedpyright: { analysis: { typeCheckingMode: "off" } } },
   });
   const diagnostics: unknown[] = [];
   client.onDiagnostics((uri, d) => diagnostics.push([uri, d.length]));
@@ -84,8 +84,11 @@ test("LanguageClient handshake, versioned full sync and diagnostics", async () =
   client.close("file:///root/a.cpp");
   client.close("file:///root/a.cpp"); // already closed: no second notification
   server.notify("textDocument/publishDiagnostics", { uri: "file:///root/a.cpp", diagnostics: [{}] });
-  // Configuration is answered per section; unknown sections get null.
-  assert.deepEqual(await server.request("workspace/configuration", { items: [{ section: "python" }, { section: "other" }, {}] }), [{ pythonPath: "py" }, null, null]);
+  // Configuration is answered per (dotted) section; unknown sections get null.
+  assert.deepEqual(
+    await server.request("workspace/configuration", { items: [{ section: "python" }, { section: "basedpyright" }, { section: "basedpyright.analysis.typeCheckingMode" }, { section: "other" }, { section: "python.missing" }] }),
+    [{ pythonPath: "py" }, { analysis: { typeCheckingMode: "off" } }, "off", null, null],
+  );
 
   assert.equal(log[0]![1].initializationOptions.a, 1);
   assert.deepEqual(log[0]![1].workspaceFolders, [{ uri: "file:///root", name: "workspace" }]);

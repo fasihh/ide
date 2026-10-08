@@ -17,7 +17,10 @@ export interface LanguageClientOptions {
   /** The workspace folder (a file URI), or null. */
   rootUri: string | null;
   initializationOptions?: unknown;
-  /** Answers to `workspace/configuration`, by section; unknown sections get null. */
+  /**
+   * Settings tree for `workspace/configuration`, nested like VS Code settings: a request for section
+   * `"basedpyright.analysis"` or `"basedpyright"` gets the matching subtree; unknown sections get null.
+   */
   configuration?: Record<string, unknown>;
 }
 
@@ -69,7 +72,7 @@ export class LanguageClient implements Disposable {
       for (const cb of this.diagnosticsListeners) cb(uri, diagnostics);
     });
     // Requests servers commonly send; this client has no settings or dynamic registration.
-    connection.onRequest<ConfigurationParams>("workspace/configuration", ({ items }) => items.map(({ section }) => (section && options.configuration?.[section]) ?? null));
+    connection.onRequest<ConfigurationParams>("workspace/configuration", ({ items }) => items.map(({ section }) => configurationSection(options.configuration, section)));
     connection.onRequest("client/registerCapability", () => null);
     connection.onRequest("client/unregisterCapability", () => null);
     connection.onRequest("window/workDoneProgress/create", () => null);
@@ -156,4 +159,16 @@ export class LanguageClient implements Disposable {
   private workspaceFolders() {
     return this.options.rootUri ? [{ uri: this.options.rootUri, name: "workspace" }] : null;
   }
+}
+
+/** The subtree at a dotted section path (`"a.b"` → `config.a.b`); the whole tree for no section. */
+export function configurationSection(config: Record<string, unknown> | undefined, section: string | undefined): unknown {
+  if (!config) return null;
+  if (!section) return config;
+  let node: unknown = config;
+  for (const key of section.split(".")) {
+    if (typeof node !== "object" || node === null || !(key in node)) return null;
+    node = (node as Record<string, unknown>)[key];
+  }
+  return node ?? null;
 }

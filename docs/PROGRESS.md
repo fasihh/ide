@@ -3,6 +3,18 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Fix: basedpyright ignored the type-checking setting
+
+- Report: many type warnings even on "basic", and "off" changed nothing.
+- Cause: basedpyright requests the `basedpyright` configuration section and reads `analysis` inside it;
+  we answered under a flat `"basedpyright.analysis"` key, so it always fell back to its default
+  (`recommended`). Probe on torch code: flat basic/off → 10 diagnostics; nested basic → 1, off → 0.
+- Fix: `LanguageClient` answers `workspace/configuration` by dotted path into a nested settings tree
+  (`configurationSection`, VS Code semantics); the basedpyright plugin sends
+  `{ python: { pythonPath }, basedpyright: { analysis } }`. Tests updated.
+- Verified in the app: switching the setting re-applies without reload (recommended 10 → off 0 →
+  basic 1 warnings on the same file).
+
 ## 2026-10-09 — Palette sweep, "New" entries from plugins, explorer header redesign
 
 - Report: creating a playground file from the palette "didn't work". Cause: the file was created but

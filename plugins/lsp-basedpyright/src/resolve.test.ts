@@ -18,7 +18,7 @@ test("runs the bundled language server with the interpreter's absolute path", as
   assert.ok(res.ok);
   assert.deepEqual([res.launch.command, ...res.launch.args], ["/usr/bin/node", "/deps/basedpyright/langserver.index.js", "--stdio"]);
   assert.deepEqual(res.launch.configuration?.python, { pythonPath: "C:\\Python312\\python.exe" });
-  assert.equal((res.launch.configuration?.["basedpyright.analysis"] as { typeCheckingMode: string }).typeCheckingMode, "basic");
+  assert.equal((res.launch.configuration?.basedpyright as { analysis: { typeCheckingMode: string } }).analysis.typeCheckingMode, "basic");
 });
 
 test("a missing interpreter still starts the server; a missing package does not", async () => {

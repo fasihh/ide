@@ -125,7 +125,10 @@ export interface LanguageServerLaunch {
   env?: NodeJS.ProcessEnv;
   /** Sent by the editor in the LSP `initialize` request. */
   initializationOptions?: unknown;
-  /** Answers to the server's `workspace/configuration` requests, by section (e.g. `"python"`). */
+  /**
+   * Settings tree answering the server's `workspace/configuration` requests, nested like VS Code
+   * settings (`{ python: { pythonPath }, basedpyright: { analysis: { … } } }`).
+   */
   configuration?: Record<string, unknown>;
 }
 

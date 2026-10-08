@@ -32,7 +32,8 @@ export async function resolveBasedPyright(config: BasedPyrightConfig, env: Based
       args: [entry, "--stdio"],
       configuration: {
         python: { pythonPath: await pythonExecutable(config.interpreter, env.exec) },
-        "basedpyright.analysis": { typeCheckingMode: config.typeCheckingMode, diagnosticMode: "openFilesOnly", autoSearchPaths: true, useLibraryCodeForTypes: true },
+        // basedpyright asks for the "basedpyright" section and reads `analysis` inside it.
+        basedpyright: { analysis: { typeCheckingMode: config.typeCheckingMode, diagnosticMode: "openFilesOnly", autoSearchPaths: true, useLibraryCodeForTypes: true } },
       },
     },
   };
