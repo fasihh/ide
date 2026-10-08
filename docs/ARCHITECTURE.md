@@ -38,6 +38,7 @@
 | `plugins/toolchain` | Example full-stack plugin (server route + panel + contributed setting) |
 | `plugins/format` | Formatter: server route running clang-format / black, format command, format on save |
 | `plugins/palette` | Command palette (modes by prefix), top-bar search box, `palette` service for other plugins |
+| `plugins/python-warm` | Warm start for live Python runs: a `ProcessLauncher` with a standby interpreter (`warm_bootstrap.py`) |
 | `plugins/playground` | Playground editor + xterm terminal, live runs over a WebSocket, files in `playground.folder` |
 
 Internal packages export TypeScript source directly (no build step); Vite and tsx compile them.

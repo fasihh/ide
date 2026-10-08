@@ -175,12 +175,14 @@ pass them to `settings` on the server and to `ctx.settings.contribute()` on the 
 Server `ctx`: `websocket(path, handler)` (served at `/api/plugins/<id>/<path>`, local origins only),
 `settings` (get/getRaw/all), `problems` (list/get/create/createScratch/updateMeta/
 writeFile/writeTests/createFile/deleteFile/renameFile/move/trash/restore/dir/root), `library`
-(list/read/save), `runner` (compile/exec/interact/start — `start` gives a live process session), `on(event)` for `ServerEvents` (`problem:created`,
+(list/read/save), `runner` (compile/exec/interact/start — `start` gives a live process session;
+`registerLauncher(launcher)` lets a plugin start live sessions its own way, given the compiled `Program`), `on(event)` for `ServerEvents` (`problem:created`,
 `problem:updated`, `compile:done`, `settings:changed`, `problems:changed`), `dataDir`, `log`.
 `setup` may start its own listeners (e.g. the planned Competitive Companion receiver).
 
 See `plugins/toolchain` and `plugins/format` for complete small examples of both halves, and
-`plugins/playground` for WebSockets + live process sessions.
+`plugins/playground` for WebSockets + live process sessions, and `plugins/python-warm` for a server-only
+feature attached through a core seam (`registerLauncher`).
 
 ### Embedding an editor
 

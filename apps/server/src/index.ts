@@ -24,6 +24,7 @@ const sockets = new SocketRouter();
 const host = new ServerPluginHost(services, sockets);
 const api = createApi(services, () => host.infos);
 await host.load(api);
+process.once("exit", () => host.dispose());
 
 const app = new Hono();
 app.onError((err, c) => {

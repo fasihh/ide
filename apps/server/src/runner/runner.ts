@@ -10,14 +10,31 @@ import {
   type InteractRequest,
   compareOutput,
 } from "@cp-ide/shared";
-import type { ProcessSession, RunnerService as RunnerApi } from "@cp-ide/plugin-api/server";
+import {
+  type Disposable,
+  type LaunchOptions,
+  type ProcessLauncher,
+  type ProcessSession,
+  type Program,
+  type RunnerService as RunnerApi,
+  toDisposable,
+} from "@cp-ide/plugin-api/server";
 import { CACHE_DIR } from "../paths.ts";
 import type { SettingsService } from "../services/settings.ts";
 import { describeExit } from "./exit-codes.ts";
-import { runInteractive } from "./interact.ts";
-import { WarmPython } from "./warm-python.ts";
+import { type CommandLine, runInteractive } from "./interact.ts";
 
-type Artifact = { command: string; args: string[]; src: string; fileName?: string };
+type Artifact = { program: Program; fileName?: string };
+
+/** How to start a program directly. */
+function commandLine(program: Program): CommandLine {
+  return program.language === "cpp"
+    ? { command: program.executable, args: [] }
+    : { command: program.interpreter, args: [...program.flags, program.script] };
+}
+
+/** The temp source file that diagnostics mention (replaced by the user's file name). */
+const sourceOf = (program: Program) => (program.language === "cpp" ? program.source : program.script);
 
 const COMPILE_TIMEOUT_MS = 60_000;
 /** Output beyond this is still compared, but not sent back to the UI. */
@@ -35,7 +52,7 @@ export class RunnerService implements RunnerApi {
   private inflight = new Map<string, Promise<CompileResult>>();
   private running = 0;
   private waiters: (() => void)[] = [];
-  private warm = new WarmPython();
+  private launchers: ProcessLauncher[] = [];
 
   constructor(
     private settings: SettingsService,
@@ -75,13 +92,13 @@ export class RunnerService implements RunnerApi {
       const check = await runProcess(interpreter, ["-m", "py_compile", src], { timeoutMs: COMPILE_TIMEOUT_MS });
       if (check.spawnError) return { ok: false, timeMs: elapsed(), stderr: `Could not start "${interpreter}": ${check.spawnError}` };
       if (check.exitCode !== 0) return { ok: false, timeMs: elapsed(), stderr: cleanPaths(check.stderr, src, req.fileName) };
-      this.artifacts.set(key, { command: interpreter, args: ["-X", "utf8", src], src, fileName: req.fileName });
+      this.artifacts.set(key, { program: { language: "python", interpreter, flags: ["-X", "utf8"], script: src }, fileName: req.fileName });
       return { ok: true, artifactId: key, cached: false, timeMs: elapsed(), stderr: "" };
     }
 
     const exe = path.join(CACHE_DIR, `${key}${EXE}`);
     const src = path.join(CACHE_DIR, `${key}.cpp`);
-    const artifact: Artifact = { command: exe, args: [], src, fileName: req.fileName };
+    const artifact: Artifact = { program: { language: "cpp", executable: exe, source: src }, fileName: req.fileName };
     if (await fs.access(exe).then(() => true, () => false)) {
       this.artifacts.set(key, artifact);
       return { ok: true, artifactId: key, cached: true, timeMs: 0, stderr: "" };
@@ -132,16 +149,12 @@ export class RunnerService implements RunnerApi {
     const artifact = this.artifacts.get(artifactId);
     if (!artifact) return null;
     const outputLimit = opts.outputLimit ?? this.settings.get("runner.outputLimitKb") * 1024;
+    const src = sourceOf(artifact.program);
     const started = performance.now();
-    const warmStart = artifact.src.endsWith(".py") && this.settings.get("python.warmStart");
-    if (!warmStart) this.warm.clear();
-    const child = warmStart
-      ? this.warm.take(artifact.command, artifact.src).child
-      : spawn(artifact.command, artifact.args, {
-          cwd: CACHE_DIR,
-          windowsHide: true,
-          env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1", PYTHONUNBUFFERED: "1" },
-        });
+    const child = this.launch(artifact.program, {
+      cwd: CACHE_DIR,
+      env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1", PYTHONUNBUFFERED: "1" },
+    });
     const listeners = { out: [] as ((d: string) => void)[], err: [] as ((d: string) => void)[], exit: [] as ((i: { exitCode: number | null; timeMs: number; message?: string }) => void)[] };
     let reason: string | undefined;
     let spawnError: string | undefined;
@@ -161,7 +174,7 @@ export class RunnerService implements RunnerApi {
     });
     child.stderr.on("data", (b: Buffer) => {
       count(b);
-      const text = cleanPaths(b.toString("utf8"), artifact.src, artifact.fileName);
+      const text = cleanPaths(b.toString("utf8"), src, artifact.fileName);
       for (const l of listeners.err) l(text);
     });
     child.stdin.on("error", () => {});
@@ -173,8 +186,6 @@ export class RunnerService implements RunnerApi {
       const timeMs = Math.round(performance.now() - started);
       const message = spawnError ? `Could not start program: ${spawnError}` : (reason ?? (code !== 0 || signal ? describeExit(code, signal) : undefined));
       for (const l of listeners.exit) l({ exitCode: code, timeMs, message });
-      // Get the next run's process ready while the user reads this one's output.
-      if (warmStart && !spawnError) this.warm.prepare(artifact.command, artifact.src);
     });
     return {
       write: (data) => {
@@ -186,6 +197,23 @@ export class RunnerService implements RunnerApi {
       onStderr: (cb) => void listeners.err.push(cb),
       onExit: (cb) => void listeners.exit.push(cb),
     };
+  }
+
+  registerLauncher(launcher: ProcessLauncher): Disposable {
+    this.launchers.push(launcher);
+    return toDisposable(() => {
+      this.launchers = this.launchers.filter((l) => l !== launcher);
+    });
+  }
+
+  /** The first registered launcher that takes the program, else a direct spawn. */
+  private launch(program: Program, opts: LaunchOptions) {
+    for (const launcher of this.launchers) {
+      const child = launcher.launch(program, opts);
+      if (child) return child;
+    }
+    const { command, args } = commandLine(program);
+    return spawn(command, args, { ...opts, windowsHide: true });
   }
 
   /** Run the solution against an interactor (see `InteractRequest` for the protocol). */
@@ -202,18 +230,19 @@ export class RunnerService implements RunnerApi {
       await fs.writeFile(files.input, req.input);
       await fs.writeFile(files.answer, req.expected ?? "");
       const tl = req.timeLimitMs ?? this.settings.get("runner.timeLimitMs");
-      const res = await runInteractive(sol, { command: inter.command, args: [...inter.args, files.input, files.output, files.answer] }, {
+      const interCmd = commandLine(inter.program);
+      const res = await runInteractive(commandLine(sol.program), { command: interCmd.command, args: [...interCmd.args, files.input, files.output, files.answer] }, {
         timeoutMs: Math.round(tl * this.settings.get("runner.killAfterFactor")),
         outputLimit: this.settings.get("runner.outputLimitKb") * 1024,
         cwd: dir,
         env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONDONTWRITEBYTECODE: "1" },
       });
-      const interStderr = truncate(cleanPaths(res.interactor.stderr, inter.src, inter.fileName)).trim();
+      const interStderr = truncate(cleanPaths(res.interactor.stderr, sourceOf(inter.program), inter.fileName)).trim();
       const base = {
         timeMs: res.timeMs,
         exitCode: res.solution.exitCode,
         stdout: "",
-        stderr: truncate(cleanPaths(res.solution.stderr, sol.src, sol.fileName)),
+        stderr: truncate(cleanPaths(res.solution.stderr, sourceOf(sol.program), sol.fileName)),
         transcript: res.transcript,
         transcriptTruncated: res.transcriptTruncated,
         interactorStderr: interStderr,
@@ -245,7 +274,8 @@ export class RunnerService implements RunnerApi {
 
   private async doExec(artifact: Artifact, req: ExecRequest): Promise<ExecResult> {
     const tl = req.timeLimitMs ?? this.settings.get("runner.timeLimitMs");
-    const res = await runProcess(artifact.command, artifact.args, {
+    const { command, args } = commandLine(artifact.program);
+    const res = await runProcess(command, args, {
       input: req.input,
       timeoutMs: Math.round(tl * this.settings.get("runner.killAfterFactor")),
       outputLimit: this.settings.get("runner.outputLimitKb") * 1024,
@@ -255,7 +285,7 @@ export class RunnerService implements RunnerApi {
       timeMs: res.timeMs,
       exitCode: res.exitCode,
       stdout: truncate(res.stdout),
-      stderr: truncate(cleanPaths(res.stderr, artifact.src, artifact.fileName)),
+      stderr: truncate(cleanPaths(res.stderr, sourceOf(artifact.program), artifact.fileName)),
     };
 
     if (res.spawnError) return { ...base, verdict: "RE", message: `Could not start program: ${res.spawnError}` };

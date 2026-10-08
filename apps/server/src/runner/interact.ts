@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import type { TranscriptEntry } from "@cp-ide/shared";
 
-export type Program = { command: string; args: string[] };
+export type CommandLine = { command: string; args: string[] };
 
 export type InteractOutcome = {
   timeMs: number;
@@ -23,8 +23,8 @@ const GRACE_MS = 1000;
  * crosses is also recorded (merged per direction) for the transcript.
  */
 export function runInteractive(
-  solution: Program,
-  interactor: Program,
+  solution: CommandLine,
+  interactor: CommandLine,
   opts: { timeoutMs: number; outputLimit: number; cwd: string; env: NodeJS.ProcessEnv },
 ): Promise<InteractOutcome> {
   return new Promise((resolve) => {

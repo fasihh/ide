@@ -5,6 +5,7 @@
  *  - use core services (settings, problems, runner)
  *  - react to server hooks (problem created, compile finished, ...)
  */
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { Hono } from "hono";
 import type {
   LibraryItem,
@@ -81,6 +82,27 @@ export interface ProcessSession {
   onExit(cb: (info: { exitCode: number | null; timeMs: number; message?: string }) => void): void;
 }
 
+/** A compiled program, as the runner knows it after `compile`. */
+export type Program =
+  | { language: "cpp"; executable: string; source: string }
+  | { language: "python"; interpreter: string; flags: string[]; script: string };
+
+/** Where and how a program is started. */
+export interface LaunchOptions {
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+}
+
+/**
+ * Starts live sessions (`RunnerService.start`) in a custom way, e.g. a pre-warmed interpreter.
+ * Launchers are asked in registration order; the first non-null child wins, otherwise the runner
+ * spawns the program directly. The returned child must have piped stdin/stdout/stderr.
+ */
+export interface ProcessLauncher {
+  readonly id: string;
+  launch(program: Program, opts: LaunchOptions): ChildProcessWithoutNullStreams | null;
+}
+
 export interface RunnerService {
   compile(req: CompileRequest): Promise<CompileResult>;
   exec(req: ExecRequest): Promise<ExecResult>;
@@ -90,6 +112,8 @@ export interface RunnerService {
    * Returns null for an unknown artifact (compile first).
    */
   start(artifactId: string, opts?: { maxRunMs?: number; outputLimit?: number }): ProcessSession | null;
+  /** Let a plugin start live sessions (see `ProcessLauncher`). Tests (`exec`/`interact`) never use launchers. */
+  registerLauncher(launcher: ProcessLauncher): Disposable;
 }
 
 /** A WebSocket connection handed to a plugin's `websocket()` handler. Messages are text. */
@@ -130,6 +154,3 @@ export interface ServerPlugin<R extends AnyHono = AnyHono> {
 export function defineServerPlugin<R extends AnyHono = AnyHono>(plugin: ServerPlugin<R>): ServerPlugin<R> {
   return plugin;
 }
-
-/** Route type of a server plugin, for `hc<PluginRoutes<typeof plugin>>()`. */
-export type PluginRoutes<P> = P extends ServerPlugin<infer R> ? R : never;

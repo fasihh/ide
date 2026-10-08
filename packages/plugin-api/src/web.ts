@@ -420,4 +420,3 @@ export function definePlugin(plugin: WebPlugin): WebPlugin {
   return plugin;
 }
 
-export type { PluginRoutes } from "./server.ts";

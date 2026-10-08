@@ -78,3 +78,9 @@ export async function unwrap<R extends { ok: boolean; status: number; json(): Pr
   }
   return (await res.json()) as SuccessJson<R>;
 }
+
+/**
+ * Route type of a server plugin, for `ctx.rpc<PluginRoutes<typeof serverPlugin>>()`. Structural, so the
+ * web half can use it without depending on the server half's (Node) types.
+ */
+export type PluginRoutes<P> = P extends { routes?: (ctx: never) => infer R } ? R : never;

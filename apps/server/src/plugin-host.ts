@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Hono } from "hono";
-import type { ServerPlugin, ServerPluginContext } from "@cp-ide/plugin-api/server";
+import { type Disposable, DisposableStore, type ServerPlugin, type ServerPluginContext } from "@cp-ide/plugin-api/server";
 import { PLUGINS_DIR, PLUGIN_DATA_DIR } from "./paths.ts";
 import type { Services } from "./services/index.ts";
 import type { SocketRouter } from "./sockets.ts";
@@ -13,8 +13,10 @@ export type ServerPluginInfo = { id: string; name: string; description?: string;
  * Discovers server plugins by convention: every `plugins/<folder>/src/server.ts` whose
  * default export is a `ServerPlugin`. Routes are mounted at `/api/plugins/<id>`.
  */
-export class ServerPluginHost {
+export class ServerPluginHost implements Disposable {
   readonly infos: ServerPluginInfo[] = [];
+  /** Whatever plugins' `setup` returned; disposed when the server shuts down. */
+  private readonly disposables = new DisposableStore();
 
   constructor(
     private services: Services,
@@ -52,7 +54,8 @@ export class ServerPluginHost {
       try {
         const ctx = this.createContext(plugin.id);
         if (plugin.routes) api.route(`/plugins/${plugin.id}`, plugin.routes(ctx));
-        await plugin.setup?.(ctx);
+        const disposable = await plugin.setup?.(ctx);
+        if (disposable) this.disposables.add(disposable);
         console.log(`[plugins] loaded ${plugin.id}`);
       } catch (err: any) {
         console.error(`[plugins] failed to activate ${plugin.id}:`, err);
@@ -60,6 +63,10 @@ export class ServerPluginHost {
         info.error = String(err?.message ?? err);
       }
     }
+  }
+
+  dispose() {
+    this.disposables.dispose();
   }
 
   private createContext(pluginId: string): ServerPluginContext {

@@ -3,7 +3,27 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
-## 2026-10-08 — Python warm start for terminal runs
+## 2026-10-08 — Warm start refactored into a plugin; code principles doc
+
+- Feedback: the first version was wedged into `RunnerService.start` (extension sniffing, Python embedded
+  in a TS string, lazy global exit hook, control data on stdin). Replaced by:
+  - Plugin API: `Program` (discriminated union recorded at compile time), `LaunchOptions`,
+    `ProcessLauncher`, `RunnerService.registerLauncher` (live sessions only; first non-null child wins,
+    else direct spawn). `PluginRoutes` moved to `common.ts` (structural) so the web half has no Node types.
+  - Runner: artifacts carry a `Program`; one `commandLine(program)` builds every direct command line.
+    It contains nothing Python-warm specific. `warm-python.ts` deleted; `interact.ts` type renamed `CommandLine`.
+  - `plugins/python-warm`: `launcher.ts` (`WarmPythonLauncher`, injected `bootstrap`/`enabled`/`idleMs`),
+    `warm_bootstrap.py` (real file; script path on **fd 3**, so stdin is user-only — verified on Windows),
+    `settings.ts` (`python-warm.enabled`, replaces core `python.warmStart`), `server.ts` returns a
+    `DisposableStore`; `settings:changed` clears the standby immediately.
+  - Plugin host keeps `setup()` disposables and disposes them on exit.
+- Tests: plugin `launcher.test.ts` (6, real python) + `test_warm_bootstrap.py` (4, unittest, run by the
+  plugin's `pnpm test`); server seam test with fake launchers. E2E through the server + playground socket:
+  torch 7.2 s cold, then 0.73 / 0.88 s. Killing the server makes the standby exit by itself (fd 3 EOF).
+- `.claude/rules/code-principles.md`: strict modularity / clean-code rules with a done-checklist
+  (pointer in `CLAUDE.md`). `__pycache__` added to `.gitignore`.
+
+## 2026-10-08 — Python warm start for terminal runs (first version, superseded above)
 
 - Feedback: every Playground run of a torch script paid the full import time. Measured: `.pyc` files
   were all present; `import torch` alone costs ~2.8 s per fresh process, so a warm process was needed.

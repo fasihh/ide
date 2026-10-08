@@ -42,8 +42,9 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | Programs run on pipes, not a real terminal: no colours/`isatty`, C++ output shows only when flushed | Use `endl`/`flush` for prompts (or keep `cin` tied to `cout`); a PTY via node-pty could come later |
 | Input is line-based (sent on Enter); no raw key-by-key input | Fine for typical console programs |
 | One run at a time per terminal | Starting a new run stops the previous one |
-| Python warm start (`python.warmStart`) imports the script's leading import block *before* your code runs | Code placed before the imports (e.g. setting `os.environ[...]`) stops preloading at that line, so it still works; turn the setting off if a library must not be pre-imported |
-| A warm standby process keeps its imports in memory (torch: a few hundred MB) for up to 15 min after the last run | Turn off `python.warmStart` to free it; tests always use fresh processes |
+| Python warm start (`python-warm.enabled`) imports the script's leading import block *before* your code runs | Code placed before the imports (e.g. setting `os.environ[...]`) stops preloading at that line, so it still works; turn the setting off if a library must not be pre-imported |
+| A warm standby process keeps its imports in memory (torch: a few hundred MB) for up to 15 min after the last run | Turn off `python-warm.enabled` to free it; tests always use fresh processes |
+| A standby is reused only for the same interpreter, flags and working folder; environment-variable differences between runs are not detected | Runs from the IDE all use the same environment |
 
 ## Problems & storage
 

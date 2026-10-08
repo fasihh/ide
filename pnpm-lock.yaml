@@ -322,6 +322,25 @@ importers:
         specifier: ^19
         version: 19.3.0
 
+  plugins/python-warm:
+    dependencies:
+      '@cp-ide/plugin-api':
+        specifier: workspace:*
+        version: link:../../packages/plugin-api
+      '@cp-ide/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
   plugins/toolchain:
     dependencies:
       '@cp-ide/plugin-api':

@@ -227,14 +227,6 @@ export const coreSettings = defineSettings({
     type: "string",
     default: "python",
   },
-  "python.warmStart": {
-    section: "Python",
-    label: "Warm start for terminal runs",
-    description:
-      "Keep a Python process ready with your last script's leading imports already loaded (e.g. torch, numpy), so Playground and terminal runs start without the import wait. Tests always use a fresh process.",
-    type: "boolean",
-    default: true,
-  },
 
   // Runner
   "runner.timeLimitMs": {

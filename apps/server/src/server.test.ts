@@ -299,43 +299,32 @@ describe("live sessions", () => {
     assert.equal((await stopped).message, "Stopped");
   });
 
-  test("Python warm start: next run reuses a process with the last script's imports loaded", async () => {
-    const run = async (source: string, stdin?: string) => {
-      const s = runner.start(await compile("python", source))!;
-      let out = "";
-      let err = "";
-      s.onStdout((d) => (out += d));
-      s.onStderr((d) => (err += d));
-      const exit = new Promise<{ exitCode: number | null }>((r) => s.onExit(r));
-      if (stdin !== undefined) {
-        s.write(stdin);
-        s.end();
-      }
-      return { ...(await exit), out, err };
-    };
-    const probe = 'import sys\nprint("fractions" in sys.modules, __name__)\n';
-
-    const first = await run('"""doc"""\nimport fractions\nimport sys\nprint(sys.argv[0].endswith(".py"))\n');
-    assert.equal(first.out.trim(), "True");
-    // The standby preloaded `fractions` from the previous script; the program itself runs as __main__.
-    assert.equal((await run(probe)).out.trim(), "True __main__");
-
-    const crash = await run('import sys\ndef f():\n    raise ValueError("boom")\nf()\n');
-    assert.equal(crash.exitCode, 1);
-    assert.match(crash.err, /main\.py", line 4/);
-    assert.match(crash.err, /ValueError: boom/);
-    assert.doesNotMatch(crash.err, /runpy|cp-ide-warm/, "bootstrap frames are hidden");
-
-    // Raw stdin reads see everything the user typed (the bootstrap reads its control line unbuffered).
-    const raw = await run("import sys\nprint(sys.stdin.buffer.read().decode().upper(), end='')\n", "abc\ndef\n");
-    assert.equal(raw.out.replace(/\r\n/g, "\n"), "ABC\nDEF\n");
-
-    await settings.update({ "python.warmStart": false });
+  test("live sessions go through registered launchers; tests never do", async () => {
+    const { spawn } = await import("node:child_process");
+    const seen: string[] = [];
+    const declining = runner.registerLauncher({ id: "declining", launch: (program) => (seen.push(program.language), null) });
+    const replacing = runner.registerLauncher({
+      id: "replacing",
+      launch: (_program, opts) => spawn("python", ["-c", "print('from launcher')"], { cwd: opts.cwd, env: opts.env }),
+    });
     try {
-      assert.equal((await run(probe)).out.trim(), "False __main__");
+      const id = await compile("python", 'print("direct")\n');
+      const s = runner.start(id)!;
+      let out = "";
+      s.onStdout((d) => (out += d));
+      await new Promise((r) => s.onExit(r));
+      assert.equal(out.trim(), "from launcher");
+      assert.deepEqual(seen, ["python"], "launchers are asked in registration order");
+      assert.equal((await runner.exec({ artifactId: id, input: "" })).stdout.trim(), "direct");
     } finally {
-      await settings.update({ "python.warmStart": true });
+      replacing.dispose();
+      declining.dispose();
     }
+    const s = runner.start(await compile("python", 'print("direct")\n'))!;
+    let out = "";
+    s.onStdout((d) => (out += d));
+    await new Promise((r) => s.onExit(r));
+    assert.equal(out.trim(), "direct", "disposed launchers are no longer asked");
   });
 
   test("websocket router rejects foreign origins", async () => {

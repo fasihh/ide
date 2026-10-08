@@ -1,0 +1,19 @@
+{
+  "name": "@cp-ide/plugin-python-warm",
+  "private": true,
+  "type": "module",
+  "description": "Pre-loads your last script's imports so the next Python terminal run starts without the import wait.",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "tsx --test \"src/**/*.test.ts\" && python -m unittest discover -s src -p \"test_*.py\""
+  },
+  "dependencies": {
+    "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19",
+    "tsx": "^4.23.15"
+  }
+}

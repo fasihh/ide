@@ -6,6 +6,8 @@ React + dockview + Monaco web app; every feature is a plugin.
 - Read `docs/PLAN.md` (phases, checklist), `docs/PROGRESS.md` (latest state) and
   `docs/LIMITATIONS.md` (known issues) first. When you finish work: tick items in PLAN.md, add a
   dated entry to PROGRESS.md, and add/remove entries in LIMITATIONS.md.
+- Before writing or reviewing code, read `.claude/rules/code-principles.md` (strict modularity and
+  clean-code rules, with a done-checklist).
 - New features go in plugins (`plugins/<name>/src/{web.tsx,server.ts}`) using only
   `@cp-ide/plugin-api`. Extend the API in `packages/plugin-api` (and implement it in
   `apps/web/src/core/plugin-host.ts` / `apps/server/src/plugin-host.ts`) rather than importing app internals.
