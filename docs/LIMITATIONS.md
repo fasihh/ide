@@ -34,7 +34,8 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | One language server process per browser tab | Fine for a local single-user IDE |
 | Settings changed outside the app (editing `settings.json`, another tab) do not re-check a failed server | Click the server in the status bar, or run "Restart language servers" |
 | No rename, LSP formatting or inlay hints yet | Phase 6 L4 |
-| basedpyright: the first member list for a big library (numpy, torch) takes ~2 s; right after "." the first letter re-asks the server (~1 s) before filtering becomes instant | basedpyright re-analyses after each edit and marks its first list incomplete by design; a Jedi-based server (pylsp) would trade type checking for lower latency |
+| The first member list for a big library (numpy, torch) after the server starts takes ~2–3 s | Repeats come from the completion cache (~150 ms; letters after the dot ~10 ms) |
+| A cached member list is shown once before its background refresh lands, so right after redefining a name (e.g. `np = something_else`) the old members can appear one time | The refresh replaces it for the next request |
 
 ## Layout & UI
 

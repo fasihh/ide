@@ -1,0 +1,17 @@
+{
+  "name": "@cp-ide/cache",
+  "private": true,
+  "type": "module",
+  "description": "General-purpose caches (LRU, stale-while-revalidate) with no dependencies; usable on the server and in the browser.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15"
+  }
+}

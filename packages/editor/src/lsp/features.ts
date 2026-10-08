@@ -1,4 +1,5 @@
-import type { LanguageClient } from "@cp-ide/lsp-client";
+import { SwrCache } from "@cp-ide/cache";
+import { type CompletionResult, type LanguageClient, memberCompletionKeys, rebaseCompletion, withoutEditRanges } from "@cp-ide/lsp-client";
 import type * as lsp from "vscode-languageserver-protocol";
 import { monaco } from "../monaco.ts";
 import { type LspCompletionItem, hoverContents, toCompletionItem, toLocations, toLspPosition, toMarkdown, toMonacoRange } from "./convert.ts";
@@ -23,7 +24,14 @@ export function registerLanguageFeatures(client: LanguageClient, languages: stri
     }
   };
 
-  const disposables: monaco.IDisposable[] = [];
+  // Member completions (`np.`, `v.`, `std::`) are slow to compute on big libraries but rarely change:
+  // repeats are served from here at once while the server refreshes them in the background.
+  const completions = new SwrCache<{ result: CompletionResult; at: lsp.Position }>({
+    maxEntries: 300,
+    shouldCache: ({ result }) => (Array.isArray(result) ? result : result.items).length > 0,
+  });
+
+  const disposables: monaco.IDisposable[] = [{ dispose: () => completions.clear() }];
   for (const language of languages) {
     if (caps.completionProvider) {
       disposables.push(
@@ -31,16 +39,34 @@ export function registerLanguageFeatures(client: LanguageClient, languages: stri
           triggerCharacters: caps.completionProvider.triggerCharacters,
           async provideCompletionItems(model, position, context, token) {
             if (!owns(model)) return undefined;
-            const result = await ask<lsp.CompletionList | lsp.CompletionItem[]>(
-              "textDocument/completion",
-              { ...doc(model, position), context: { triggerKind: context.triggerKind + 1, triggerCharacter: context.triggerCharacter } },
-              token,
-            );
+            const params = { ...doc(model, position), context: { triggerKind: context.triggerKind + 1, triggerCharacter: context.triggerCharacter } };
+            const linePrefix = model.getValueInRange({ ...lineStart(position), endLineNumber: position.lineNumber, endColumn: position.column });
+            const keys = memberCompletionKeys(params.textDocument.uri, linePrefix);
+            let result: CompletionResult | null = null;
+            let superset = false;
+            if (keys) {
+              const [exact, ...shorter] = keys as [string, ...string[]];
+              // Not tied to Monaco's token: a finished load is stored even if the user typed on.
+              const load = () => client.request<CompletionResult>("textDocument/completion", params).then((r) => ({ result: r, at: params.position }));
+              const fallback = completions.peek(exact) ? undefined : shorter.map((k) => completions.peek(k)).find(Boolean);
+              if (fallback) {
+                // e.g. `np.z` for the first time: show the cached `np.` list now, load the exact one.
+                completions.get(exact, load).catch(() => {});
+                result = withoutEditRanges(fallback.result);
+                superset = true;
+              } else {
+                const cached = await completions.get(exact, load).catch(() => null);
+                result = cached && rebaseCompletion(cached.result, cached.at, params.position);
+              }
+            } else {
+              result = await ask<CompletionResult>("textDocument/completion", params, token);
+            }
             if (!result) return undefined;
             const word = model.getWordUntilPosition(position);
             const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn };
             const items = Array.isArray(result) ? result : result.items;
-            return { suggestions: items.map((item) => toCompletionItem(item, range)), incomplete: !Array.isArray(result) && result.isIncomplete };
+            // A superset is incomplete by definition: Monaco asks again on the next keystroke and gets the exact list once loaded.
+            return { suggestions: items.map((item) => toCompletionItem(item, range)), incomplete: superset || (!Array.isArray(result) && result.isIncomplete) };
           },
           resolveCompletionItem: caps.completionProvider.resolveProvider
             ? async (item, token) => {
@@ -123,6 +149,8 @@ export function registerLanguageFeatures(client: LanguageClient, languages: stri
   }
   return { dispose: () => disposables.forEach((d) => d.dispose()) };
 }
+
+const lineStart = (position: monaco.IPosition) => ({ startLineNumber: position.lineNumber, startColumn: 1 });
 
 /** Only locations in files the editor has open can be shown (e.g. not inside system headers). */
 const openLocations = (locations: monaco.languages.Location[]) => locations.filter((l) => monaco.editor.getModel(l.uri));

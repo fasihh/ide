@@ -32,6 +32,7 @@
 | `packages/plugin-api` | Types/helpers for plugins: `./web` (WebPluginContext, definePlugin) and `./server` (ServerPluginContext, defineServerPlugin), `Emitter`, disposables |
 | `packages/ui` | shadcn-style components (compact sizes) + design tokens (`styles.css`), incl. verdict colours |
 | `packages/editor` | Monaco setup (local bundle, workers, themes from CSS tokens, overflow widget host) + `CodeEditor` (settings, Vim), LSP → Monaco providers (`registerLanguageFeatures`), `fileModelPath` |
+| `packages/cache` | General caches with no dependencies (server or browser): `LruCache`, `SwrCache` (stale-while-revalidate, deduped loads) |
 | `packages/lsp-client` | Transport-agnostic JSON-RPC connection + LSP client (handshake, document sync, diagnostics); no editor dependency |
 | `apps/server` | Hono API, services, runner, server plugin host. Exports `AppType` |
 | `apps/web` | Shell (dock, top/status bar, quick input) + core stores + web plugin host. No feature UI lives here |

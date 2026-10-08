@@ -119,8 +119,20 @@ importers:
         specifier: ^8.3.3
         version: 8.3.3(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
+  packages/cache:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
   packages/editor:
     dependencies:
+      '@cp-ide/cache':
+        specifier: workspace:*
+        version: link:../cache
       '@cp-ide/lsp-client':
         specifier: workspace:*
         version: link:../lsp-client

@@ -3,6 +3,25 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — `@cp-ide/cache` + cached member completions
+
+- Feedback: after the stale-text fix, every `np.` still waited ~0.8 s (basedpyright recomputes types
+  for all 658 numpy members on each request after an edit; settings like `typeCheckingMode: off` or
+  `autoImportCompletions: false` did not help — measured with a scratch probe).
+- New core package `packages/cache` (no deps, server + browser): `LruCache`, `SwrCache`
+  (stale-while-revalidate: hit → returned at once and refreshed in the background; miss → awaited;
+  concurrent loads deduped; failed / `shouldCache`-rejected loads not stored; `clear()` ignores late
+  results). 4 tests.
+- `@cp-ide/lsp-client` `completion.ts`: `memberCompletionKeys` (receiver + typed prefix, exact key first
+  then shorter prefixes), `rebaseCompletion` (shift edits on the request line to the cursor),
+  `withoutEditRanges` (superset fallback). 3 tests.
+- `@cp-ide/editor` `registerLanguageFeatures`: member completions through an `SwrCache` (300 entries,
+  per client, cleared on disconnect); loads are not tied to Monaco's cancellation token so results typed
+  past are still stored.
+- Browser timings (typing → list visible, numpy): first `np.` 2.7 s (cold), repeats ~150 ms, `np.z` /
+  `np.ze` 0–20 ms. C++: cached `v.` on another line at a deeper indent inserted `push_back` at the right
+  place (rebased edits).
+
 ## 2026-10-08 — Fix: completion after "." used stale text
 
 - Report: `np.` offered nothing useful (looked like basedpyright missing global libraries).

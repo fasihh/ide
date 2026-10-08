@@ -18,6 +18,11 @@ original design; **"As built"** describes what exists and overrides them where t
   that answer only for models their client has open) and `apps/web/src/core/language-servers.ts` +
   `language-session.ts` (watch Monaco models with `file:` URIs, connect lazily, diagnostics → markers
   `lsp:<id>`, reconnect with backoff, retry failed servers on settings changes).
+- **Completion cache**: member completions (`np.`, `v.`, `ptr->`, `std::`) go through an `SwrCache`
+  (`@cp-ide/cache`) keyed by document + receiver + typed prefix (`memberCompletionKeys`): repeats are
+  served at once and refreshed in the background; a first-time prefix shows the cached shorter-prefix
+  list (`withoutEditRanges`, marked incomplete) while the exact one loads; cached edits are moved to the
+  cursor (`rebaseCompletion`). Scope completions (no receiver) always ask the server.
 - **Model URIs are real files** (`fileModelPath(abs)` in `@cp-ide/editor`): problem files and Playground
   files get language support; Library editors use `library:` URIs and are left alone.
 - **Installs are portable**: basedpyright is an npm dependency of its plugin (`pnpm install` brings it);

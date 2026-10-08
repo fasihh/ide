@@ -10,6 +10,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@cp-ide/cache": "workspace:*",
     "@cp-ide/lsp-client": "workspace:*",
     "@cp-ide/plugin-api": "workspace:*",
     "@cp-ide/ui": "workspace:*",
