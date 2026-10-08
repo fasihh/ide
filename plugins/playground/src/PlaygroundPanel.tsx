@@ -1,6 +1,6 @@
 import { Download, FileInput, Loader2, MoreHorizontal, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
-import { CodeEditor } from "@cp-ide/editor";
+import { CodeEditor, fileModelPath } from "@cp-ide/editor";
 import { libraryNameSchema } from "@cp-ide/shared";
 import {
   Button,
@@ -174,7 +174,7 @@ export function PlaygroundPanel({ ctx }: PanelProps) {
         <CodeEditor
           ctx={ctx}
           className="min-h-0 flex-1"
-          path={`playground/${file.name}`}
+          path={fileModelPath(`${folder}/${file.name}`)}
           language={file.language}
           value={file.content}
           onChange={(v) => setContent(file.name, v)}

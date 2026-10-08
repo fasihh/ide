@@ -13,7 +13,7 @@ import {
   Tooltip,
   cn,
 } from "@cp-ide/ui";
-import { CodeEditor as CodeEditorView, type MonacoEditor, monaco } from "@cp-ide/editor";
+import { CodeEditor as CodeEditorView, type MonacoEditor, fileModelPath, monaco } from "@cp-ide/editor";
 import { parseDiagnostics } from "./diagnostics.ts";
 
 type CodeEditor = MonacoEditor;
@@ -225,6 +225,7 @@ function EmptyState({ ctx }: PanelProps) {
 
 export function EditorPanel({ ctx }: PanelProps) {
   const problem = ctx.workspace.use((s) => s.problem);
+  const problemsRoot = ctx.workspace.use((s) => s.problemsRoot);
   const activeFile = ctx.workspace.use((s) => s.activeFile);
   const buffers = ctx.workspace.use((s) => s.buffers);
   const editorRef = useRef<CodeEditor | null>(null);
@@ -246,7 +247,7 @@ export function EditorPanel({ ctx }: PanelProps) {
       <CodeEditorView
         ctx={ctx}
         className="min-h-0 flex-1"
-        path={`${problem.id}/${activeFile}`}
+        path={fileModelPath(`${problemsRoot}/${problem.id}/${activeFile}`)}
         language={languageOf(activeFile)}
         value={buffer?.content ?? ""}
         onMount={(editor) => {

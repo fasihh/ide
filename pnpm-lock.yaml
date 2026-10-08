@@ -51,6 +51,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@cp-ide/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
+      '@cp-ide/lsp-client':
+        specifier: workspace:*
+        version: link:../../packages/lsp-client
       '@cp-ide/plugin-api':
         specifier: workspace:*
         version: link:../../packages/plugin-api
@@ -115,6 +121,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@cp-ide/lsp-client':
+        specifier: workspace:*
+        version: link:../lsp-client
       '@cp-ide/plugin-api':
         specifier: workspace:*
         version: link:../plugin-api
@@ -130,6 +139,9 @@ importers:
       monaco-vim:
         specifier: ^0.4.4
         version: 0.4.4(monaco-editor@0.57.0)
+      vscode-languageserver-protocol:
+        specifier: ^3.17.5
+        version: 3.18.4
     devDependencies:
       '@types/react':
         specifier: ^19
@@ -137,6 +149,19 @@ importers:
       react:
         specifier: ^19.3.0
         version: 19.3.0
+
+  packages/lsp-client:
+    dependencies:
+      vscode-languageserver-protocol:
+        specifier: ^3.17.5
+        version: 3.18.4
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
 
   packages/plugin-api:
     dependencies:
@@ -250,6 +275,47 @@ importers:
       '@types/react':
         specifier: ^19
         version: 19.3.0
+
+  plugins/lsp-basedpyright:
+    dependencies:
+      '@cp-ide/plugin-api':
+        specifier: workspace:*
+        version: link:../../packages/plugin-api
+      '@cp-ide/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      basedpyright:
+        specifier: ^1.31.0
+        version: 1.40.2
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
+  plugins/lsp-clangd:
+    dependencies:
+      '@cp-ide/plugin-api':
+        specifier: workspace:*
+        version: link:../../packages/plugin-api
+      '@cp-ide/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
 
   plugins/palette:
     dependencies:
@@ -1649,6 +1715,11 @@ packages:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
     engines: {node: '>=10'}
 
+  basedpyright@1.40.2:
+    resolution: {integrity: sha512-9uld8+5tZC2Gxf8nIynyunK0N4xn01W1ApzLMXDAcuA8uJq2QSfldYn9gSbxn9MWR8wmHDo7GaEHLhlnLFHaJA==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
+
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
 
@@ -2073,6 +2144,16 @@ packages:
         optional: true
       yaml:
         optional: true
+
+  vscode-jsonrpc@9.0.3:
+    resolution: {integrity: sha512-qETYf9PCl1lVfwR+oBmMfc4vP2nqLNA35ABxorw3j06+xlKRgDVxbLgKm4Y/xPL0YWdeDjLoI4ImICIT3nB0zQ==}
+    engines: {node: '>=14.0.0'}
+
+  vscode-languageserver-protocol@3.18.4:
+    resolution: {integrity: sha512-CCXbyr99dafRJzJH/0Ryk7ly5T8XPmSR0//OuF2w4m+9JiOin7zcAT5iET8GRE7Z9taFBejb3GbM0a0mbjdbrg==}
+
+  vscode-languageserver-types@3.18.4:
+    resolution: {integrity: sha512-nQsacoiijvl0fRf2q28uFDrAVwRhdCa3QveiF7/CX0r18mLR5FU/1WskSsCKOjmEbtteKUnY8x8Yzxop+k0zwg==}
 
   ws@8.22.0:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
@@ -3221,6 +3302,10 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  basedpyright@1.40.2:
+    optionalDependencies:
+      fsevents: 2.3.3
+
   class-variance-authority@0.7.1:
     dependencies:
       clsx: 2.1.1
@@ -3641,6 +3726,15 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
       tsx: 4.23.15
+
+  vscode-jsonrpc@9.0.3: {}
+
+  vscode-languageserver-protocol@3.18.4:
+    dependencies:
+      vscode-jsonrpc: 9.0.3
+      vscode-languageserver-types: 3.18.4
+
+  vscode-languageserver-types@3.18.4: {}
 
   ws@8.22.0: {}
 

@@ -9,6 +9,7 @@ import {
 import type { SettingDescriptors } from "@cp-ide/shared";
 import { api, unwrap } from "../api.ts";
 import { formatKeybinding, listCommands, recordKeybinding, setKeybinding, useCommandList } from "./keybindings.ts";
+import { languageServersApi } from "./language-servers.ts";
 import { layout, useLayout } from "./layout.ts";
 import { uiApi } from "./ui.ts";
 import { libraryApi } from "./library.ts";
@@ -101,6 +102,7 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
       ...runApi,
       register: (target) => disposables.add(runApi.register(target)),
     },
+    languageServers: languageServersApi,
     ui: uiApi,
     notify,
     theme: themeApi,

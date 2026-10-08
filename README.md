@@ -8,6 +8,8 @@ files under one folder.
 
 - Node 20+ and pnpm 10
 - `g++` on PATH (MinGW/MSYS2/WinLibs on Windows) and `python`. Both can be changed in Settings
+- Optional: `clangd` on PATH for C++ completions/diagnostics as you type (`winget install LLVM.LLVM`,
+  `pip install clangd`, …). Python language support (basedpyright) is bundled
 
 ## Run
 

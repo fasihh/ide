@@ -177,7 +177,8 @@ export function LibraryPanel({ ctx }: PanelProps) {
         {current ? (
           <CodeEditor
             ctx={ctx}
-            path={`library/${kind}/${current.name}`}
+            // Not a file on disk (templates/snippets aren't compiled), so language servers stay out.
+            path={`library:/${kind}/${current.name}`}
             language={current.language}
             value={draft ?? current.content}
             onChange={onChange}

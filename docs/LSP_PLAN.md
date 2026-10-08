@@ -1,7 +1,32 @@
 # Plan: VS Code-level language intelligence (C++ & Python)
 
-Status: **planned, not started** (later phase — see [PLAN.md](PLAN.md)). This document is the design to
-start from.
+Status: **L1–L3 implemented** (2026-10-08), L4 open — see [PLAN.md](PLAN.md). The sections below were the
+original design; **"As built"** describes what exists and overrides them where they differ.
+
+## As built
+
+- **Core owns LSP; each server is a plugin.** A server plugin calls
+  `ctx.languageServers.register({ id, name, languages, resolve, restartOn })`. `resolve()` returns how to
+  start the process (`command`, `args`, `env`, `initializationOptions`, `configuration`) or why it cannot
+  (`error`, `hint`). Core does everything else.
+- **Server core** (`apps/server/src/lsp/`): `LanguageServerHost` (registry, `list()` for
+  `GET /api/lsp/servers`, `restartOn` handling), `LanguageServerSession` (one WebSocket ↔ one process,
+  buffers messages until spawned), `framing.ts` (`Content-Length`). The socket is `WS /api/lsp?server=<id>`;
+  the browser sends bare JSON-RPC. One server process per editor connection (per browser tab).
+- **Browser**: `@cp-ide/lsp-client` (transport-agnostic `JsonRpcConnection`, `LanguageClient` with full-text
+  sync and `workspace/configuration` answers), `@cp-ide/editor` `registerLanguageFeatures` (Monaco providers
+  that answer only for models their client has open) and `apps/web/src/core/language-servers.ts` +
+  `language-session.ts` (watch Monaco models with `file:` URIs, connect lazily, diagnostics → markers
+  `lsp:<id>`, reconnect with backoff, retry failed servers on settings changes).
+- **Model URIs are real files** (`fileModelPath(abs)` in `@cp-ide/editor`): problem files and Playground
+  files get language support; Library editors use `library:` URIs and are left alone.
+- **Installs are portable**: basedpyright is an npm dependency of its plugin (`pnpm install` brings it);
+  clangd is a native binary taken from PATH or `lsp-clangd.command` — the plugin never searches
+  tool-specific folders. Missing clangd → status bar warning with install hints.
+- **clangd headers**: no `--query-driver` and no files written into problem folders. Problems have no
+  compilation database, so clangd uses `initializationOptions.fallbackFlags` = `-std=…` + `cpp.flags` +
+  `--target=<cpp.compiler -dumpmachine>`; with the GCC triple clang locates that GCC's libstdc++ itself
+  (verified with MinGW GCC 13.2 / clangd 21).
 
 ## Goal
 

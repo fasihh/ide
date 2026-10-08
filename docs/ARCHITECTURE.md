@@ -31,7 +31,8 @@
 | `packages/shared` | Domain types + zod schemas (`problem.json`, tests, verdicts), settings descriptor system and core settings, output comparator |
 | `packages/plugin-api` | Types/helpers for plugins: `./web` (WebPluginContext, definePlugin) and `./server` (ServerPluginContext, defineServerPlugin), `Emitter`, disposables |
 | `packages/ui` | shadcn-style components (compact sizes) + design tokens (`styles.css`), incl. verdict colours |
-| `packages/editor` | Monaco setup (local bundle, workers, themes from CSS tokens, overflow widget host) + `CodeEditor` (settings, Vim) |
+| `packages/editor` | Monaco setup (local bundle, workers, themes from CSS tokens, overflow widget host) + `CodeEditor` (settings, Vim), LSP → Monaco providers (`registerLanguageFeatures`), `fileModelPath` |
+| `packages/lsp-client` | Transport-agnostic JSON-RPC connection + LSP client (handshake, document sync, diagnostics); no editor dependency |
 | `apps/server` | Hono API, services, runner, server plugin host. Exports `AppType` |
 | `apps/web` | Shell (dock, top/status bar, quick input) + core stores + web plugin host. No feature UI lives here |
 | `plugins/core` | All built-in tools (explorer, editor, tests, output, problem, settings, toolbar/status items) |
@@ -39,6 +40,8 @@
 | `plugins/format` | Formatter: server route running clang-format / black, format command, format on save |
 | `plugins/palette` | Command palette (modes by prefix), top-bar search box, `palette` service for other plugins |
 | `plugins/python-warm` | Warm start for live Python runs: a `ProcessLauncher` with a standby interpreter (`warm_bootstrap.py`) |
+| `plugins/lsp-clangd` | Registers clangd (C++) with core: command from PATH/setting, fallback flags from the C++ settings |
+| `plugins/lsp-basedpyright` | Registers basedpyright (Python, bundled npm dependency) with core |
 | `plugins/playground` | Playground editor + xterm terminal, live runs over a WebSocket, files in `playground.folder` |
 
 Internal packages export TypeScript source directly (no build step); Vite and tsx compile them.
@@ -74,6 +77,7 @@ Scratch problems go to `scratch/<yyyy-mm-dd>/scratch-<hhmmss>`.
 | `POST /api/problems/{move,trash,restore}` | rename/move a problem folder, move to `.trash`, restore |
 | `GET/PUT /api/library/:kind`, `POST /api/library/:kind/{create,rename,delete}` | templates / snippets |
 | `GET /api/events` | SSE stream of `ServerEvent`s (problems changed on disk) |
+| `GET /api/lsp/servers` · `WS /api/lsp?server=<id>` | registered language servers (availability, init options) · editor ↔ language server bridge |
 | `WS /api/plugins/<id>/<path>` | plugin WebSockets (`SocketRouter` in `apps/server/src/sockets.ts`; non-local `Origin` rejected) |
 | `POST /api/run/compile` | `{ language, source, fileName }` → `CompileResult` (`artifactId`) |
 | `POST /api/run/exec` | `{ artifactId, input, expected?, timeLimitMs?, compareMode?, floatEpsilon? }` → `ExecResult` |

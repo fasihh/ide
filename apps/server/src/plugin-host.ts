@@ -70,7 +70,7 @@ export class ServerPluginHost implements Disposable {
   }
 
   private createContext(pluginId: string): ServerPluginContext {
-    const { settings, problems, library, runner, events } = this.services;
+    const { settings, problems, library, runner, languageServers, events } = this.services;
     return {
       pluginId,
       dataDir: path.join(PLUGIN_DATA_DIR, pluginId),
@@ -78,6 +78,7 @@ export class ServerPluginHost implements Disposable {
       problems,
       library,
       runner,
+      languageServers,
       on: (event, handler) => events.on(event, handler),
       websocket: (path, handler) => this.sockets.add(`/api/plugins/${pluginId}/${path.replace(/^\/+/, "")}`, handler),
       log: (...args) => console.log(`[${pluginId}]`, ...args),

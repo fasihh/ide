@@ -3,11 +3,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { defineServerPlugin } from "@cp-ide/plugin-api/server";
+import { splitArgs } from "@cp-ide/shared";
 import { formatSettings } from "./settings.ts";
-
-function splitArgs(s: string): string[] {
-  return (s.match(/(?:[^\s"]+|"[^"]*")+/g) ?? []).map((a) => a.replace(/"/g, ""));
-}
 
 function runFormatter(command: string, source: string): Promise<{ ok: true; source: string } | { ok: false; error: string }> {
   const [cmd, ...args] = splitArgs(command);

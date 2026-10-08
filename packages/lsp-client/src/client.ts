@@ -1,0 +1,139 @@
+import type {
+  ClientCapabilities,
+  ConfigurationParams,
+  Diagnostic,
+  InitializeParams,
+  InitializeResult,
+  PublishDiagnosticsParams,
+  ServerCapabilities,
+} from "vscode-languageserver-protocol";
+import type { Disposable, JsonRpcConnection } from "./jsonrpc.ts";
+
+export interface LanguageClientOptions {
+  /** Shown to the server as `clientInfo.name`. */
+  clientName: string;
+  /** The workspace folder (a file URI), or null. */
+  rootUri: string | null;
+  initializationOptions?: unknown;
+  /** Answers to `workspace/configuration`, by section; unknown sections get null. */
+  configuration?: Record<string, unknown>;
+}
+
+/** What the editor integration supports — servers tailor their responses to this. */
+const CLIENT_CAPABILITIES: ClientCapabilities = {
+  general: { positionEncodings: ["utf-16"] },
+  textDocument: {
+    synchronization: { didSave: false, dynamicRegistration: false },
+    completion: {
+      contextSupport: true,
+      completionItem: {
+        snippetSupport: true,
+        documentationFormat: ["markdown", "plaintext"],
+        labelDetailsSupport: true,
+        resolveSupport: { properties: ["documentation", "detail"] },
+      },
+    },
+    hover: { contentFormat: ["markdown", "plaintext"] },
+    signatureHelp: {
+      contextSupport: true,
+      signatureInformation: { documentationFormat: ["markdown", "plaintext"], parameterInformation: { labelOffsetSupport: true }, activeParameterSupport: true },
+    },
+    definition: { linkSupport: false },
+    references: {},
+    publishDiagnostics: { relatedInformation: false },
+  },
+  workspace: { configuration: true, workspaceFolders: true },
+  window: { workDoneProgress: false },
+};
+
+/**
+ * An LSP client over a JSON-RPC connection: the initialize handshake, full-text document sync and
+ * diagnostics. Feature requests (completion, hover, ...) go through `request`.
+ */
+export class LanguageClient implements Disposable {
+  private serverCapabilities: ServerCapabilities = {};
+  private readonly versions = new Map<string, number>();
+  private readonly diagnosticsListeners: ((uri: string, diagnostics: Diagnostic[]) => void)[] = [];
+
+  constructor(
+    readonly connection: JsonRpcConnection,
+    private readonly options: LanguageClientOptions,
+  ) {
+    connection.onNotification<PublishDiagnosticsParams>("textDocument/publishDiagnostics", ({ uri, diagnostics }) => {
+      for (const cb of this.diagnosticsListeners) cb(uri, diagnostics);
+    });
+    // Requests servers commonly send; this client has no settings or dynamic registration.
+    connection.onRequest<ConfigurationParams>("workspace/configuration", ({ items }) => items.map(({ section }) => (section && options.configuration?.[section]) ?? null));
+    connection.onRequest("client/registerCapability", () => null);
+    connection.onRequest("client/unregisterCapability", () => null);
+    connection.onRequest("window/workDoneProgress/create", () => null);
+    connection.onRequest("workspace/workspaceFolders", () => this.workspaceFolders());
+  }
+
+  get capabilities(): ServerCapabilities {
+    return this.serverCapabilities;
+  }
+
+  async start(): Promise<void> {
+    const params: InitializeParams = {
+      processId: null,
+      clientInfo: { name: this.options.clientName },
+      rootUri: this.options.rootUri,
+      workspaceFolders: this.workspaceFolders(),
+      capabilities: CLIENT_CAPABILITIES,
+      initializationOptions: this.options.initializationOptions,
+    };
+    const result = await this.connection.request<InitializeResult>("initialize", params);
+    this.serverCapabilities = result.capabilities;
+    this.connection.notify("initialized", {});
+  }
+
+  open(uri: string, languageId: string, text: string) {
+    this.versions.set(uri, 1);
+    this.connection.notify("textDocument/didOpen", { textDocument: { uri, languageId, version: 1, text } });
+  }
+
+  /** Replace the whole document (valid for both full and incremental servers). */
+  change(uri: string, text: string) {
+    const version = (this.versions.get(uri) ?? 0) + 1;
+    this.versions.set(uri, version);
+    this.connection.notify("textDocument/didChange", { textDocument: { uri, version }, contentChanges: [{ text }] });
+  }
+
+  close(uri: string) {
+    if (!this.versions.delete(uri)) return;
+    this.connection.notify("textDocument/didClose", { textDocument: { uri } });
+  }
+
+  isOpen(uri: string) {
+    return this.versions.has(uri);
+  }
+
+  request<R>(method: string, params: unknown, signal?: AbortSignal): Promise<R> {
+    return this.connection.request<R>(method, params, signal);
+  }
+
+  onDiagnostics(cb: (uri: string, diagnostics: Diagnostic[]) => void): Disposable {
+    this.diagnosticsListeners.push(cb);
+    return { dispose: () => this.diagnosticsListeners.splice(this.diagnosticsListeners.indexOf(cb), 1) };
+  }
+
+  /** Polite shutdown, then close the connection whether or not the server answered. */
+  async stop() {
+    try {
+      await Promise.race([this.connection.request("shutdown"), new Promise((r) => setTimeout(r, 1000))]);
+      this.connection.notify("exit");
+    } catch {
+      // already gone
+    }
+    this.dispose();
+  }
+
+  dispose() {
+    this.connection.dispose();
+  }
+
+  private workspaceFolders() {
+    return this.options.rootUri ? [{ uri: this.options.rootUri, name: "workspace" }] : null;
+  }
+}

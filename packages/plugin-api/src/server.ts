@@ -16,6 +16,7 @@ import type {
   CreateProblemInput,
   ExecRequest,
   InteractRequest,
+  Language,
   ExecResult,
   Problem,
   ProblemMetaPatch,
@@ -116,6 +117,38 @@ export interface RunnerService {
   registerLauncher(launcher: ProcessLauncher): Disposable;
 }
 
+/** How to start a language server process (it must speak LSP over stdio). */
+export interface LanguageServerLaunch {
+  command: string;
+  args: string[];
+  env?: NodeJS.ProcessEnv;
+  /** Sent by the editor in the LSP `initialize` request. */
+  initializationOptions?: unknown;
+  /** Answers to the server's `workspace/configuration` requests, by section (e.g. `"python"`). */
+  configuration?: Record<string, unknown>;
+}
+
+export type LanguageServerResolution = { ok: true; launch: LanguageServerLaunch } | { ok: false; error: string; hint?: string };
+
+/**
+ * A language server a plugin provides. Core owns everything else: the editor's LSP client, document
+ * sync, Monaco features, process lifetime and the status bar.
+ */
+export interface LanguageServerContribution {
+  /** Also the id shown in the status bar and used by `/api/lsp?server=<id>`. */
+  id: string;
+  name: string;
+  languages: Language[];
+  /** How to start the server now. Called before every start, so settings changes apply on restart. */
+  resolve(): Promise<LanguageServerResolution>;
+  /** Setting keys whose change restarts running sessions of this server (editors reconnect). */
+  restartOn?: string[];
+}
+
+export interface LanguageServersService {
+  register(server: LanguageServerContribution): Disposable;
+}
+
 /** A WebSocket connection handed to a plugin's `websocket()` handler. Messages are text. */
 export interface PluginSocket {
   send(data: string): void;
@@ -132,6 +165,7 @@ export interface ServerPluginContext {
   readonly problems: ProblemsService;
   readonly library: LibraryService;
   readonly runner: RunnerService;
+  readonly languageServers: LanguageServersService;
   on<K extends keyof ServerEvents>(event: K, handler: (payload: ServerEvents[K]) => void): Disposable;
   /** Accept WebSocket connections at `/api/plugins/<id>/<path>`. */
   websocket(path: string, handler: (socket: PluginSocket) => void): Disposable;

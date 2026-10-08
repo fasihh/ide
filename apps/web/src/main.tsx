@@ -7,6 +7,7 @@ import { activatePlugins } from "./core/plugin-host.ts";
 import { loadSettings, useSettings } from "./core/settings.ts";
 import { installTheme } from "./core/theme.ts";
 import { installServerEvents } from "./core/server-events.ts";
+import { installLanguageServers } from "./core/language-servers.ts";
 import { restoreLastProblem, workspace } from "./core/workspace.ts";
 import { reportError } from "./core/notify.ts";
 
@@ -45,6 +46,9 @@ async function boot() {
   );
   await workspace.refreshProblems().catch(reportError("Could not list problems"));
   installServerEvents();
+  // After the problems root is known (it becomes the servers' workspace folder); editors that are
+  // already open are picked up.
+  void installLanguageServers().catch(reportError("Could not load language servers"));
   await restoreLastProblem();
 }
 

@@ -24,7 +24,11 @@ const sockets = new SocketRouter();
 const host = new ServerPluginHost(services, sockets);
 const api = createApi(services, () => host.infos);
 await host.load(api);
-process.once("exit", () => host.dispose());
+sockets.add("/api/lsp", (socket, url) => services.languageServers.connect(url.searchParams.get("server"), socket));
+process.once("exit", () => {
+  host.dispose();
+  services.languageServers.dispose();
+});
 
 const app = new Hono();
 app.onError((err, c) => {

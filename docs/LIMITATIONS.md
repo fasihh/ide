@@ -25,6 +25,16 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | Saved layouts live in browser localStorage (per browser profile), not in settings.json | Could move to the server later |
 | Snippets use Monaco snippet syntax, so a literal `$` must be written `\$` | Documented in the Templates & Snippets panel |
 
+## Language servers
+
+| Limitation | Notes / planned fix |
+|---|---|
+| clangd is not bundled (native binary) | Install it so `clangd` is on PATH, or set Settings → C++ language server; basedpyright is bundled |
+| Go to definition / references only show locations in files open in the editor (not system headers like `bits/stdc++.h`) | Hover still shows the declaration; opening read-only header models is possible later |
+| One language server process per browser tab | Fine for a local single-user IDE |
+| Settings changed outside the app (editing `settings.json`, another tab) do not re-check a failed server | Click the server in the status bar, or run "Restart language servers" |
+| No rename, LSP formatting or inlay hints yet | Phase 6 L4 |
+
 ## Layout & UI
 
 | Limitation | Notes / planned fix |

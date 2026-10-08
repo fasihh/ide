@@ -8,7 +8,10 @@ Strict rules for every change. Each rule names the seam or pattern in this repo 
   `register*()` methods, events — and never names a feature. A feature that needs new behaviour from
   core gets a new seam in `packages/plugin-api`, then lives in `plugins/<name>/`.
   Example: Python warm start is `plugins/python-warm`, attached through `RunnerService.registerLauncher`;
-  the runner only asks launchers in order and falls back to a plain spawn.
+  the runner only asks launchers in order and falls back to a plain spawn. Language servers likewise:
+  core owns the LSP client, sync and UI; `plugins/lsp-*` only `ctx.languageServers.register(...)`.
+- **Resolve external tools portably**: PATH, a setting, or an npm dependency of the plugin. Probe them
+  at runtime and report a missing tool with an install hint.
 - **Plugins depend on `@cp-ide/plugin-api` and `@cp-ide/shared` only.** Tests in a plugin exercise the
   plugin's own units (`plugins/python-warm/src/launcher.test.ts`); seams are tested in core with fakes
   (`apps/server/src/server.test.ts`, "live sessions go through registered launchers").

@@ -121,6 +121,9 @@ export const libraryRoutes = (s: Services) =>
     });
 
 /** Server-sent events (`ServerEvent` JSON in `data`). Not part of the RPC types: use EventSource. */
+/** Language servers from plugins; editors connect over the `/api/lsp?server=<id>` WebSocket. */
+export const lspRoutes = (s: Services) => new Hono().get("/servers", async (c) => c.json(await s.languageServers.list()));
+
 export const eventsRoute = (s: Services) =>
   new Hono().get("/", (c) =>
     streamSSE(c, async (stream) => {

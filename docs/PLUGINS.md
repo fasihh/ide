@@ -177,12 +177,35 @@ Server `ctx`: `websocket(path, handler)` (served at `/api/plugins/<id>/<path>`, 
 writeFile/writeTests/createFile/deleteFile/renameFile/move/trash/restore/dir/root), `library`
 (list/read/save), `runner` (compile/exec/interact/start — `start` gives a live process session;
 `registerLauncher(launcher)` lets a plugin start live sessions its own way, given the compiled `Program`), `on(event)` for `ServerEvents` (`problem:created`,
-`problem:updated`, `compile:done`, `settings:changed`, `problems:changed`), `dataDir`, `log`.
+`problem:updated`, `compile:done`, `settings:changed`, `problems:changed`), `languageServers`
+(see below), `dataDir`, `log`.
 `setup` may start its own listeners (e.g. the planned Competitive Companion receiver).
 
 See `plugins/toolchain` and `plugins/format` for complete small examples of both halves, and
 `plugins/playground` for WebSockets + live process sessions, and `plugins/python-warm` for a server-only
 feature attached through a core seam (`registerLauncher`).
+
+### Adding a language server
+
+Language support is core; a server is a small server plugin (see `plugins/lsp-clangd`,
+`plugins/lsp-basedpyright`):
+
+```ts
+setup(ctx) {
+  return ctx.languageServers.register({
+    id: "mylsp", name: "mylsp", languages: ["cpp"],
+    restartOn: ["mylsp.command"],            // settings that restart running sessions
+    resolve: async () => ({ ok: true, launch: { command: "mylsp", args: ["--stdio"], initializationOptions: {}, configuration: {} } }),
+    // or { ok: false, error: "mylsp was not found", hint: "Install it with …" }
+  });
+}
+```
+
+Core connects it when an editor shows a real file (`file:` model URI, see `fileModelPath`) in one of
+its languages, syncs documents, shows diagnostics and the status bar item, and maps completion, hover,
+signature help, definition and references to Monaco. Resolve the command portably (PATH, a setting,
+or an npm dependency) rather than searching other tools' install folders. On the web side,
+`ctx.languageServers` offers `list()`, `useStates()` and `restart(id?)`.
 
 ### Embedding an editor
 

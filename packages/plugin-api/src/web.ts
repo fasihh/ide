@@ -17,6 +17,7 @@ import type {
   ExecRequest,
   ExecResult,
   Language,
+  LanguageServerInfo,
   LibraryItem,
   LibraryKind,
   Problem,
@@ -380,6 +381,26 @@ export interface PluginInfo {
 // Hono generics are intentionally loose here.
 export type RpcClient<T extends Hono<any, any, any>> = ReturnType<typeof hc<T>>;
 
+/** Where an editor-side language client is in its life. */
+export type LanguageServerState =
+  | { phase: "idle" }
+  | { phase: "starting" }
+  | { phase: "ready" }
+  | { phase: "unavailable"; error: string; hint?: string }
+  | { phase: "error"; error: string };
+
+/**
+ * Language servers registered by server plugins (`ctx.languageServers.register` on the server). Core
+ * connects one lazily when an editor shows a real file in one of its languages.
+ */
+export interface LanguageServersApi {
+  list(): LanguageServerInfo[];
+  /** React hook: state per server id. */
+  useStates(): Record<string, LanguageServerState>;
+  /** Restart one server, or all of them. */
+  restart(id?: string): void;
+}
+
 export interface WebPluginContext {
   readonly pluginId: string;
   readonly workspace: WorkspaceApi;
@@ -394,6 +415,7 @@ export interface WebPluginContext {
   readonly events: EventsApi;
   readonly layout: LayoutApi;
   readonly run: RunApi;
+  readonly languageServers: LanguageServersApi;
   readonly library: LibraryApi;
   readonly ui: UiApi;
   readonly notify: NotifyApi;

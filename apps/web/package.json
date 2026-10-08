@@ -9,10 +9,12 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@cp-ide/editor": "workspace:*",
+    "@cp-ide/lsp-client": "workspace:*",
     "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/server": "workspace:*",
     "@cp-ide/shared": "workspace:*",
     "@cp-ide/ui": "workspace:*",
-    "@cp-ide/server": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "dockview-react": "^8.4.1",
     "hono": "^4.13.13",

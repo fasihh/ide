@@ -10,11 +10,13 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@cp-ide/lsp-client": "workspace:*",
     "@cp-ide/plugin-api": "workspace:*",
     "@cp-ide/ui": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "monaco-editor": "^0.57.0",
-    "monaco-vim": "^0.4.4"
+    "monaco-vim": "^0.4.4",
+    "vscode-languageserver-protocol": "^3.17.5"
   },
   "peerDependencies": {
     "react": "^19"

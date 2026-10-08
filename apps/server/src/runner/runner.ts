@@ -9,6 +9,7 @@ import {
   type ExecResult,
   type InteractRequest,
   compareOutput,
+  splitArgs,
 } from "@cp-ide/shared";
 import {
   type Disposable,
@@ -40,10 +41,6 @@ const COMPILE_TIMEOUT_MS = 60_000;
 /** Output beyond this is still compared, but not sent back to the UI. */
 const MAX_RETURNED_OUTPUT = 256 * 1024;
 const EXE = process.platform === "win32" ? ".exe" : "";
-
-export function splitArgs(s: string): string[] {
-  return (s.match(/(?:[^\s"]+|"[^"]*")+/g) ?? []).map((a) => a.replace(/"/g, ""));
-}
 
 const hash = (...parts: string[]) => createHash("sha256").update(parts.join("\0")).digest("hex").slice(0, 20);
 

@@ -31,12 +31,15 @@ function wrap(ws: WebSocket): PluginSocket {
   };
 }
 
+/** `url` is the request URL, for handlers that take query parameters. */
+export type SocketHandler = (socket: PluginSocket, url: URL) => void;
+
 /** Routes WebSocket upgrades on the HTTP server to handlers registered by path. */
 export class SocketRouter {
   private wss = new WebSocketServer({ noServer: true });
-  private routes = new Map<string, (socket: PluginSocket) => void>();
+  private routes = new Map<string, SocketHandler>();
 
-  add(path: string, handler: (socket: PluginSocket) => void) {
+  add(path: string, handler: SocketHandler) {
     this.routes.set(path, handler);
     return toDisposable(() => {
       if (this.routes.get(path) === handler) this.routes.delete(path);
@@ -45,14 +48,14 @@ export class SocketRouter {
 
   attach(server: Server) {
     server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-      const path = new URL(req.url ?? "/", "http://localhost").pathname;
-      const handler = this.routes.get(path);
+      const handler = this.routes.get(new URL(req.url ?? "/", "http://localhost").pathname);
       if (!handler || !allowedOrigin(req)) {
         socket.write(`HTTP/1.1 ${handler ? "403 Forbidden" : "404 Not Found"}\r\n\r\n`);
         socket.destroy();
         return;
       }
-      this.wss.handleUpgrade(req, socket, head, (ws) => handler(wrap(ws)));
+      const url = new URL(req.url ?? "/", "http://localhost");
+      this.wss.handleUpgrade(req, socket, head, (ws) => handler(wrap(ws), url));
     });
   }
 }

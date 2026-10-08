@@ -3,6 +3,29 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-08 — Phase 6 L1–L3: language servers (core) + clangd / basedpyright plugins
+
+- Request: LSP registration in core, each LSP as a plugin; installs must work in a fresh environment
+  (no tool-specific install lookups). Design in `docs/LSP_PLAN.md` → "As built".
+- Plugin API: server `ctx.languageServers.register(LanguageServerContribution)`; web
+  `ctx.languageServers` (`list`, `useStates`, `restart`); shared `LanguageServerInfo`, `splitArgs`
+  (deduplicated from the runner and the format plugin).
+- Server: `apps/server/src/lsp/{framing,session,host}.ts`, `GET /api/lsp/servers`, `WS /api/lsp?server=`
+  (SocketRouter handlers now receive the URL). Web: `core/language-servers.ts`, `core/language-session.ts`.
+  Packages: new `@cp-ide/lsp-client`; `@cp-ide/editor` gained `registerLanguageFeatures`, `toMarker`,
+  `canonicalUri`, `fileModelPath`. Editor/Playground models use real file URIs; Library uses `library:`.
+- Plugins: `lsp-clangd` (PATH or `lsp-clangd.command`; fallbackFlags + `--target=` from `g++ -dumpmachine`,
+  verified with `clangd --check` on MinGW), `lsp-basedpyright` (npm dep, `pythonPath` via
+  `sys.executable`, `lsp-basedpyright.typeCheckingMode` default `basic`). Core status bar item + command
+  "Restart language servers".
+- Tests: lsp-client (3), server LSP framing/host with a fake stdio server (4), clangd resolve (3),
+  basedpyright resolve (3). Browser E2E (temp home, clangd via a test-only `lsp-clangd.command`):
+  C++ diagnostics as you type, `vector` member completion + snippet insertion, hover, F12; Python type
+  error diagnostics + `str` completions; Playground file attached; `cpp.standard` change restarts clangd
+  (new PID); missing clangd → warning item, fixing the setting recovers without reopening files.
+- Answered: `clang-format` failed because the pip package's console script
+  (`C:\Python312\Scripts\clang-format.exe`) was never created (RECORD lists no scripts, no INSTALLER file).
+
 ## 2026-10-08 — Warm start refactored into a plugin; code principles doc
 
 - Feedback: the first version was wedged into `RunnerService.start` (extension sniffing, Python embedded

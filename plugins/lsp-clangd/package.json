@@ -1,0 +1,19 @@
+{
+  "name": "@cp-ide/plugin-lsp-clangd",
+  "private": true,
+  "type": "module",
+  "description": "C++ language server (clangd): completions, hover, diagnostics as you type, go to definition.",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19",
+    "tsx": "^4.23.15"
+  }
+}

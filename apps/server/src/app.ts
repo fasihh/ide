@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eventsRoute, libraryRoutes, problemsRoutes, runRoutes, settingsRoutes } from "./routes/index.ts";
+import { eventsRoute, libraryRoutes, lspRoutes, problemsRoutes, runRoutes, settingsRoutes } from "./routes/index.ts";
 import type { Services } from "./services/index.ts";
 import type { ServerPluginInfo } from "./plugin-host.ts";
 
@@ -18,7 +18,8 @@ export function createApi(s: Services, plugins: () => ServerPluginInfo[]) {
     .route("/problems", problemsRoutes(s))
     .route("/run", runRoutes(s))
     .route("/library", libraryRoutes(s))
-    .route("/events", eventsRoute(s));
+    .route("/events", eventsRoute(s))
+    .route("/lsp", lspRoutes(s));
 }
 
 export type AppType = ReturnType<typeof createApi>;
