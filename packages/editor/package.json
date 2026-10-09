@@ -13,6 +13,7 @@
     "@cp-ide/cache": "workspace:*",
     "@cp-ide/lsp-client": "workspace:*",
     "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/shared": "workspace:*",
     "@cp-ide/ui": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "monaco-editor": "^0.57.0",

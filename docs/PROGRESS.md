@@ -3,6 +3,25 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Per-file indentation; longer time limits; visible setting clamps
+
+- Report: some files ignore the tab-size setting; a TLE after 10 s could not be raised in Settings.
+- Indentation: Monaco detects each file's indentation, and setting changes never reached open files.
+  Now indentation is per file (`packages/editor/src/indentation.ts`): defaults applied once per file
+  (`ensureIndentation`), re-applied to all files when `editor.tabSize` / new `editor.detectIndentation`
+  change, and a per-file override. Core status bar item "Spaces: N" / "Tabs: N" + command
+  `editor.changeIndentation`: indent using spaces/tabs (new lines), re-indent file with spaces/tabs
+  (rewrites existing lines; `reindent()` in `@cp-ide/shared`, tested — Monaco's own commands only swap
+  tabs/spaces), detect from content. `activeEditor()` / `onDidChangeActiveEditor` exported from
+  `@cp-ide/editor` (last focused editor).
+- Time limit: `runner.timeLimitMs` max 60 s → 1 hour (the user's 10 s cap was "Kill after ×" at its
+  max of 10). Settings number fields now say "Maximum is N" / "Minimum is N" when they clamp.
+- Verified (temp home, default tab size 2): 4-space file detected as Spaces: 4; re-indent to 2 spaces
+  rewrote every level and synced the buffer; settings change re-applied (8, back to detect → 2); API
+  accepts 120 s and rejects > 1 h with a message; typing 20 into "Kill after" → 10 + "Maximum is 10".
+- Dev note: adding a workspace dependency needs `pnpm install` and a Vite restart (it failed to resolve
+  `@cp-ide/shared` from `@cp-ide/editor` until restarted).
+
 ## 2026-10-09 — Phase 8: Competitive Companion import
 
 - `plugins/competitive-companion`:

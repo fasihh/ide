@@ -139,6 +139,9 @@ importers:
       '@cp-ide/plugin-api':
         specifier: workspace:*
         version: link:../plugin-api
+      '@cp-ide/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@cp-ide/ui':
         specifier: workspace:*
         version: link:../ui

@@ -5,3 +5,4 @@ export * from "./fuzzy.ts";
 export * from "./snippets.ts";
 export * from "./lsp.ts";
 export * from "./args.ts";
+export * from "./indent.ts";

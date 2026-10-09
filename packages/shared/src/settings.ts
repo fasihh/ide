@@ -133,6 +133,13 @@ export const coreSettings = defineSettings({
       { value: "off", label: "Off" },
     ],
   },
+  "editor.detectIndentation": {
+    section: "Editor",
+    label: "Detect indentation from file content",
+    description: "Files already indented with tabs or another width keep that indentation. Off: every file uses the tab size above (with spaces). A single file can be changed from the status bar.",
+    type: "boolean",
+    default: true,
+  },
   "editor.inlayHints": {
     section: "Editor",
     label: "Inlay hints",
@@ -248,11 +255,11 @@ export const coreSettings = defineSettings({
   "runner.timeLimitMs": {
     section: "Runner",
     label: "Default time limit (ms)",
-    description: "Used when a problem does not define its own time limit.",
+    description: "Used when a problem does not define its own (a problem's limit, e.g. from an import, wins). Up to one hour.",
     type: "number",
     default: 2000,
     min: 100,
-    max: 60000,
+    max: 3_600_000,
   },
   "runner.killAfterFactor": {
     section: "Runner",

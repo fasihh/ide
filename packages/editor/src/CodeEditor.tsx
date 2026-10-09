@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import type { WebPluginContext } from "@cp-ide/plugin-api/web";
 import { cn } from "@cp-ide/ui";
+import { ensureIndentation, reapplyIndentation } from "./indentation.ts";
 import { defineThemes, monaco, overflowWidgetsHost } from "./monaco.ts";
 
 export type MonacoEditor = monaco.editor.IStandaloneCodeEditor;
@@ -75,6 +76,7 @@ export function CodeEditor({ ctx, path, language, value, onChange, onMount, opti
   const fontSize = ctx.settings.use("editor.fontSize");
   const fontLigatures = ctx.settings.use("editor.fontLigatures");
   const tabSize = ctx.settings.use("editor.tabSize");
+  const detectIndentation = ctx.settings.use("editor.detectIndentation");
   const wordWrap = ctx.settings.use("editor.wordWrap");
   const minimap = ctx.settings.use("editor.minimap");
   const lineNumbers = ctx.settings.use("editor.lineNumbers");
@@ -88,6 +90,29 @@ export function CodeEditor({ ctx, path, language, value, onChange, onMount, opti
   useEffect(() => {
     monaco.editor.setTheme(defineThemes());
   }, [theme]);
+
+  // Indentation is per file: each file this editor shows gets the defaults once (a per-file choice from
+  // the status bar then sticks); changing the settings re-applies them everywhere.
+  const indentDefaults = useRef({ tabSize, detect: detectIndentation });
+  indentDefaults.current = { tabSize, detect: detectIndentation };
+  useEffect(() => {
+    if (!editor) return;
+    const ensure = () => {
+      const model = editor.getModel();
+      if (model) ensureIndentation(model, indentDefaults.current);
+    };
+    ensure();
+    const sub = editor.onDidChangeModel(ensure);
+    return () => sub.dispose();
+  }, [editor]);
+  const firstIndentRun = useRef(true);
+  useEffect(() => {
+    if (firstIndentRun.current) {
+      firstIndentRun.current = false;
+      return;
+    }
+    reapplyIndentation({ tabSize, detect: detectIndentation });
+  }, [tabSize, detectIndentation]);
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)}>
@@ -108,7 +133,6 @@ export function CodeEditor({ ctx, path, language, value, onChange, onMount, opti
             fontFamily,
             fontSize,
             fontLigatures,
-            tabSize,
             wordWrap: wordWrap ? "on" : "off",
             minimap: { enabled: minimap },
             lineNumbers,

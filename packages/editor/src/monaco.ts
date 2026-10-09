@@ -29,9 +29,32 @@ export function overflowWidgetsHost(): HTMLElement {
   return overflowHost;
 }
 
-/** The editor that last had text focus — the owner of a focused widget in the overflow host. */
+/** The editor that last had text focus: the owner of a focused overflow widget, the target of status items. */
 let lastFocusedEditor: monaco.editor.ICodeEditor | null = null;
-monaco.editor.onDidCreateEditor((editor) => editor.onDidFocusEditorText(() => (lastFocusedEditor = editor)));
+const activeListeners = new Set<() => void>();
+monaco.editor.onDidCreateEditor((editor) => {
+  const changed = () => activeListeners.forEach((cb) => cb());
+  editor.onDidFocusEditorText(() => {
+    lastFocusedEditor = editor;
+    changed();
+  });
+  // Changes to the active editor's file or its options matter to whoever shows them.
+  editor.onDidChangeModel(() => editor === lastFocusedEditor && changed());
+  editor.onDidChangeModelOptions(() => editor === lastFocusedEditor && changed());
+  editor.onDidDispose(() => {
+    if (lastFocusedEditor !== editor) return;
+    lastFocusedEditor = null;
+    changed();
+  });
+});
+
+export const activeEditor = () => lastFocusedEditor;
+
+/** Called when the active editor changes, or its file or that file's options do. */
+export function onDidChangeActiveEditor(cb: () => void): monaco.IDisposable {
+  activeListeners.add(cb);
+  return { dispose: () => activeListeners.delete(cb) };
+}
 
 /**
  * The rename box is the one overflow widget that takes keyboard focus. Monaco listens for keybindings

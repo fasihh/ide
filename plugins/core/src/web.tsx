@@ -13,6 +13,7 @@ import { openNewProblemDialog } from "./chrome/NewProblemDialog.tsx";
 import { LanguageStatus, RootStatus, RunButton, SaveStatus, TestsStatus } from "./chrome/items.tsx";
 import { NewMenu } from "./chrome/NewItems.tsx";
 import { LanguageServerStatus } from "./chrome/LanguageServerStatus.tsx";
+import { IndentationStatus, changeIndentation } from "./editor/indentation.tsx";
 import { applyLayout, deleteLayout, saveLayout } from "./chrome/layouts.ts";
 import { copyPath, deleteProblem, moveProblem, renameProblem } from "./explorer/actions.ts";
 import { LibraryPanel } from "./library/LibraryPanel.tsx";
@@ -195,6 +196,8 @@ export default definePlugin({
     ctx.statusBar.register({ id: "core.language", align: "left", order: 0, component: LanguageStatus });
     ctx.statusBar.register({ id: "core.root", align: "left", order: 10, component: RootStatus });
     ctx.statusBar.register({ id: "core.languageServers", align: "right", order: -10, component: LanguageServerStatus });
+    ctx.statusBar.register({ id: "core.indentation", align: "right", order: -30, component: IndentationStatus });
+    ctx.commands.register({ id: "editor.changeIndentation", title: "Change indentation of this file…", category: "Editor", run: () => changeIndentation(ctx) });
     ctx.commands.register({ id: "languageServers.restart", title: "Restart language servers", category: "Editor", run: () => ctx.languageServers.restart() });
     ctx.statusBar.register({ id: "core.tests", align: "right", order: 0, component: TestsStatus });
     ctx.statusBar.register({ id: "core.save", align: "right", order: 10, component: SaveStatus });

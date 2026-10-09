@@ -24,26 +24,35 @@ function TextControl({ value, onCommit, multiline, placeholder }: { value: strin
 
 function NumberControl({ value, d, onCommit }: { value: number; d: Extract<SettingDescriptor, { type: "number" }>; onCommit: (v: number) => void }) {
   const [draft, setDraft] = useState(String(value));
+  /** Why the typed value was changed, shown until the next edit. */
+  const [note, setNote] = useState<string | null>(null);
   useEffect(() => setDraft(String(value)), [value]);
   const commit = () => {
     const n = Number(draft);
     if (draft.trim() === "" || Number.isNaN(n)) return setDraft(String(value));
     const clamped = Math.min(d.max ?? Infinity, Math.max(d.min ?? -Infinity, n));
+    setNote(clamped === n ? null : n > clamped ? `Maximum is ${clamped}` : `Minimum is ${clamped}`);
     setDraft(String(clamped));
     if (clamped !== value) onCommit(clamped);
   };
   return (
-    <Input
-      type="number"
-      className="w-32 font-mono"
-      value={draft}
-      min={d.min}
-      max={d.max}
-      step={d.step ?? "any"}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-    />
+    <div className="flex flex-col items-end gap-0.5">
+      <Input
+        type="number"
+        className="w-32 font-mono"
+        value={draft}
+        min={d.min}
+        max={d.max}
+        step={d.step ?? "any"}
+        onChange={(e) => {
+          setNote(null);
+          setDraft(e.target.value);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+      />
+      {note && <span className="text-[0.625rem] text-amber-500">{note}</span>}
+    </div>
   );
 }
 
