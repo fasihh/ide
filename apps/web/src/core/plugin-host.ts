@@ -1,4 +1,5 @@
 import { hc } from "hono/client";
+import { create } from "zustand";
 import {
   DisposableStore,
   type PluginInfo,
@@ -28,7 +29,8 @@ import { workspaceApi } from "./workspace.ts";
  */
 const modules = import.meta.glob<{ default: WebPlugin }>("../../../../plugins/*/src/web.tsx", { eager: true });
 
-const infos: PluginInfo[] = [];
+/** Discovered plugins and their state; replaced as a whole, so readers never see a half-built list. */
+const usePluginInfos = create<{ infos: PluginInfo[] }>(() => ({ infos: [] }));
 const stores = new Map<string, DisposableStore>();
 
 function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPluginContext {
@@ -107,7 +109,7 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
     ui: uiApi,
     notify,
     theme: themeApi,
-    plugins: { list: () => [...infos] },
+    plugins: { list: () => usePluginInfos.getState().infos, useList: () => usePluginInfos((s) => s.infos) },
     rpc: () => hc(`${location.origin}/api/plugins/${plugin.id}`) as never,
   };
   return ctx;
@@ -154,10 +156,17 @@ export function reconcilePlugins(): Promise<void> {
     const serverPlugins = await unwrap(api.plugins.$get()).catch(() => []);
     const serverIds = new Set(serverPlugins.map((p) => p.id));
     const disabled = new Set(getSetting("plugins.disabled"));
-    infos.length = 0;
-    for (const plugin of discovered) {
-      const enabled = !!plugin.required || !disabled.has(plugin.id);
-      infos.push({ id: plugin.id, name: plugin.name, description: plugin.description, required: plugin.required, enabled, hasServer: serverIds.has(plugin.id) });
+    const infos = discovered.map((plugin) => ({
+      id: plugin.id,
+      name: plugin.name,
+      description: plugin.description,
+      required: plugin.required,
+      enabled: !!plugin.required || !disabled.has(plugin.id),
+      hasServer: serverIds.has(plugin.id),
+    }));
+    usePluginInfos.setState({ infos });
+    for (const [i, plugin] of discovered.entries()) {
+      const { enabled } = infos[i]!;
       if (enabled && !stores.has(plugin.id)) await activate(plugin);
       else if (!enabled && stores.has(plugin.id)) deactivate(plugin.id);
     }
@@ -165,7 +174,3 @@ export function reconcilePlugins(): Promise<void> {
   return reconciling;
 }
 
-
-export function pluginInfos() {
-  return [...infos];
-}

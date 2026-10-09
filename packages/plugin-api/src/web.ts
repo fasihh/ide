@@ -444,7 +444,8 @@ export interface WebPluginContext {
   readonly notify: NotifyApi;
   /** The resolved color theme ("system" already applied). `use` is a React hook. */
   readonly theme: { get(): "dark" | "light"; use(): "dark" | "light" };
-  readonly plugins: { list(): PluginInfo[] };
+  /** Discovered plugins and whether they are on (`useList` is a React hook). */
+  readonly plugins: { list(): PluginInfo[]; useList(): PluginInfo[] };
   /**
    * Typed client for this plugin's server routes:
    *   const api = ctx.rpc<PluginRoutes<typeof serverPlugin>>();

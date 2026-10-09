@@ -3,6 +3,16 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Fix: plugin switches vanished while toggling
+
+- Report: pressing a plugin switch in Settings made switches disappear.
+- Cause: `reconcilePlugins()` emptied the shared plugin list and refilled it one entry at a time, awaiting
+  each activation; the Settings panel re-rendered mid-way and kept showing the partial list (the list was
+  not reactive).
+- Fix: plugin infos live in a store, built completely and replaced in one step before (de)activating;
+  `ctx.plugins.useList()` (new) lets the Settings panel follow it. Removed the unused `pluginInfos()`.
+- Verified with real clicks: basedpyright off, Playground off, both on — all 8 rows stay, states correct.
+
 ## 2026-10-09 — Plugins turn on and off live (server and web)
 
 - Report: turning off the language-server plugins left the servers running until a cold start;

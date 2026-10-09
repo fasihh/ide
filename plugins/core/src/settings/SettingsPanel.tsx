@@ -48,7 +48,7 @@ function NumberControl({ value, d, onCommit }: { value: number; d: Extract<Setti
 }
 
 function PluginsControl({ ctx, value, onCommit }: { ctx: WebPluginContext; value: string[]; onCommit: (v: string[]) => void }) {
-  const plugins = ctx.plugins.list();
+  const plugins = ctx.plugins.useList();
   return (
     <div className="w-full space-y-1.5">
       {plugins.map((p) => (
