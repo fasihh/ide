@@ -3,6 +3,25 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Playground tabs, drag and drop, focus
+
+- Playground: right-click a tab for the same actions as the "…" button (they act on the tab clicked, not
+  the active one; `fileActions()` feeds both menus); hover × on a tab deletes the file (confirm dialog says
+  whether it has unsaved changes; clean files get a "Don't ask again" checkbox, new `rememberKey` option
+  on `ui.confirm`); tabs reorder by drag (order kept in localStorage, survives renames); the new-file
+  prompt takes focus even when opened from a menu (re-taken after Radix hands focus back to the trigger).
+- Explorer: opening a problem also brings the Code tab forward; problems drag onto a contest row to move
+  there; while dragging, a dashed "today" folder under `scratch` appears if today's folder does not exist
+  yet and is created by dropping on it.
+- Focus: no outline on layout containers anywhere (global `:where(div, …):focus-visible` rule, plus
+  dockview's `tabindex=-1` containers); the focused group gets a faint border tint instead. New
+  `panels.focus(id)` and unbound commands `view.focus.<panelId>`. F6 panel cycling was added and removed
+  again at the user's request.
+- Verified in the browser pane (temp home): drag-move, ghost folder create, tab reorder, × delete with
+  "Don't ask again", Code tab switch. Not verified: where keyboard focus lands after a focus command, and
+  the white box the user saw (not reproduced; the new rule is a best guess — scrollable containers that
+  Chrome makes keyboard-focusable).
+
 ## 2026-10-09 — Clearer message when a run is stopped
 
 - Report: "Killed after 10022 ms" looked like a 10 s cap. It was the problem's own limit × "Kill after"

@@ -55,12 +55,12 @@ export default definePlugin({
 | `workspace` | problems list, open problem, buffers, active file (`get`/`use`/`subscribe`), `openProblem`, `createProblem`, `createScratch`, `updateMeta(patch, id?)`, `renameProblem`/`moveProblem`/`deleteProblem`/`restoreProblem`, `setBuffer`, `save`, `createFile`/`renameFile`/`deleteFile`, `addTest`/`updateTest`/`removeTest`/`duplicateTest`/`moveTest` |
 | `runner` | state (`phase`, `compile`, per-test state, `custom`), `compile()` (main + interactor for interactive problems), `run(testIds?)`, `runCustom(input)`, `exec(req)` for arbitrary input |
 | `settings` | typed `get`/`use`/`set` for core keys, `contribute(descriptors)` → typed scoped accessor, `useSchema()`/`update()` for settings UIs |
-| `panels` | `register`, `open`, `close`, `toggle`, `isOpen`, `useIsOpen`, `active`, `useActive`, `list` |
+| `panels` | `register`, `open`, `close`, `toggle`, `focus`, `isOpen`, `useIsOpen`, `active`, `useActive`, `list` |
 | `commands` | `register` (with optional `keybinding` and `when` condition), `execute(id, ...args)`, `list`/`useList` (effective keybindings), `setKeybinding`, `recordKeybinding`, `formatKeybinding` |
 | `newItems` | `register({ id, label, description?, icon?, command, order? })`, `useList()` — entries for the top bar New menu, the explorer's + menu and the empty editor (shortcut shown from `command`) |
 | `run` | run targets for the top-bar Run / Ctrl+Enter: `register({ id, label, priority, applies, run, useBusy?, stop? })`, `current`, `useCurrent`, `runCurrent` |
 | `layout` | `registerPreset({ id, name, panels })`, `applyPreset`, `listPresets`, `saveCurrent(name)`, `deleteSaved`, `reset` |
-| `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive })` — all promise-based |
+| `ui` | `quickPick(items)`, `prompt({ title, validate })`, `confirm({ title, destructive, rememberKey? })` (`rememberKey` adds a "Don't ask again" checkbox) — all promise-based |
 | `library` | templates & snippets: `list(kind)`, `use(kind)` (hook), `save`, `create`, `rename`, `remove` |
 | `toolbar` / `statusBar` | `register({ id, order, component })` (status bar also takes `align`) |
 | `overlays` | `register({ id, component })` — rendered at the app root (palettes, dialogs, HUDs) |
