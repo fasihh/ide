@@ -28,26 +28,59 @@ const environment = {
 const sessionFor = (model: monaco.editor.ITextModel) =>
   model.uri.scheme === "file" ? sessions.get(useLanguageServers.getState().infos.find((i) => i.languages.includes(model.getLanguageId() as never))?.id ?? "") : undefined;
 
+/** The session each tracked model is open in. */
+const assigned = new Map<monaco.editor.ITextModel, LanguageServerSession | undefined>();
+
+/** Move a model to the session that should hold it now (servers or its language may have changed). */
+function assign(model: monaco.editor.ITextModel) {
+  const next = sessionFor(model);
+  const current = assigned.get(model);
+  if (current === next) return;
+  current?.close(model);
+  next?.open(model);
+  assigned.set(model, next);
+}
+
 function track(model: monaco.editor.ITextModel) {
-  let session = sessionFor(model);
-  session?.open(model);
-  const languageChange = model.onDidChangeLanguage(() => {
-    session?.close(model);
-    session = sessionFor(model);
-    session?.open(model);
-  });
+  assign(model);
+  const languageChange = model.onDidChangeLanguage(() => assign(model));
   model.onWillDispose(() => {
     languageChange.dispose();
-    session?.close(model);
+    assigned.get(model)?.close(model);
+    assigned.delete(model);
   });
 }
+
+/**
+ * Follow the servers registered right now (a plugin providing one was turned on or off): sessions of
+ * removed servers are disposed — their processes stop — and editors attach to new ones.
+ */
+export async function refreshLanguageServers() {
+  const infos = await fetchInfos().catch(() => null);
+  if (!infos) return;
+  const ids = new Set(infos.map((i) => i.id));
+  for (const [id, session] of sessions) {
+    if (ids.has(id)) continue;
+    session.dispose();
+    sessions.delete(id);
+  }
+  for (const info of infos) if (!sessions.has(info.id)) sessions.set(info.id, new LanguageServerSession(info, environment));
+  useLanguageServers.setState((s) => ({
+    infos,
+    states: Object.fromEntries(infos.map((i) => [i.id, s.states[i.id] ?? initialState(i)])),
+  }));
+  for (const model of assigned.keys()) assign(model);
+}
+
+const initialState = (i: LanguageServerInfo): LanguageServerState =>
+  i.available ? { phase: "idle" } : { phase: "unavailable", error: i.error, hint: i.hint, action: i.action };
 
 /** Load the registered servers and start following editor models. Call once at startup. */
 export async function installLanguageServers() {
   const infos = await fetchInfos().catch(() => [] as LanguageServerInfo[]);
   useLanguageServers.setState({
     infos,
-    states: Object.fromEntries(infos.map((i) => [i.id, i.available ? { phase: "idle" } : { phase: "unavailable", error: i.error, hint: i.hint, action: i.action }])),
+    states: Object.fromEntries(infos.map((i) => [i.id, initialState(i)])),
   });
   for (const info of infos) sessions.set(info.id, new LanguageServerSession(info, environment));
   monaco.editor.getModels().forEach(track);

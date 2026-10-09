@@ -316,7 +316,7 @@ export const coreSettings = defineSettings({
   "plugins.disabled": {
     section: "Plugins",
     label: "Disabled plugins",
-    description: "Plugin ids that should not be activated. Reload to apply.",
+    description: "Plugins that are turned off. Changes apply immediately: a plugin's panels, commands, routes and language servers stop with it.",
     type: "stringList",
     default: [],
   },

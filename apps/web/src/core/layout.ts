@@ -169,6 +169,12 @@ export const layout = {
     api.onDidAddPanel(syncOpen);
     api.onDidRemovePanel(syncOpen);
     api.onDidActivePanelChange((e) => useLayout.setState({ active: e.panel?.id }));
+    // A plugin turned off takes its panels with it.
+    useRegistry.subscribe((s, prev) => {
+      if (s.panels === prev.panels) return;
+      const still = new Set(s.panels.map((p) => p.id));
+      for (const p of prev.panels) if (!still.has(p.id)) api.getPanel(p.id)?.api.close();
+    });
     api.onDidLayoutChange(() => {
       flushPendingSizes();
       rememberSizes();

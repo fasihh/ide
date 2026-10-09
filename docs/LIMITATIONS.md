@@ -39,6 +39,13 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | The first member list for a big library (numpy, torch) after the server starts takes ~2–3 s | Repeats come from the completion cache (~150 ms; letters after the dot ~10 ms) |
 | A cached member list is shown once before its background refresh lands, so right after redefining a name (e.g. `np = something_else`) the old members can appear one time | The refresh replaces it for the next request |
 
+## Plugins
+
+| Limitation | Notes / planned fix |
+|---|---|
+| Turning a plugin off stops new connections to its WebSockets, but a connection already open (e.g. a Playground program running in the terminal) keeps running until it ends | Stop the program first, or it ends on its own |
+| A plugin that keeps state outside its context (module-level variables, its own timers) is responsible for cleaning it up in the `Disposable` its `setup`/`activate` returns | Everything registered through `ctx` is cleaned up automatically |
+
 ## Layout & UI
 
 | Limitation | Notes / planned fix |

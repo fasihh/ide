@@ -22,7 +22,7 @@ function handleChange(ids: string[]) {
  * dead connection hanging after a server restart, so a watchdog recreates it when pings stop.
  * After any reconnect we resync, since changes may have been missed meanwhile.
  */
-export function installServerEvents() {
+export function installServerEvents({ onPluginsChanged }: { onPluginsChanged: () => void }) {
   let source: EventSource | null = null;
   let lastSeen = Date.now();
   let opened = false;
@@ -48,6 +48,7 @@ export function installServerEvents() {
         return;
       }
       if (event.type === "problems-changed") handleChange(event.ids);
+      else if (event.type === "plugins-changed") onPluginsChanged();
     };
   };
 

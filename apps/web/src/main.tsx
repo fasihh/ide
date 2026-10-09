@@ -3,11 +3,11 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { App } from "./shell/App.tsx";
 import { installKeybindings } from "./core/keybindings.ts";
-import { activatePlugins } from "./core/plugin-host.ts";
+import { reconcilePlugins } from "./core/plugin-host.ts";
 import { loadSettings, useSettings } from "./core/settings.ts";
 import { installTheme } from "./core/theme.ts";
 import { installServerEvents } from "./core/server-events.ts";
-import { installLanguageServers } from "./core/language-servers.ts";
+import { installLanguageServers, refreshLanguageServers } from "./core/language-servers.ts";
 import { restoreLastProblem, workspace } from "./core/workspace.ts";
 import { reportError } from "./core/notify.ts";
 
@@ -38,14 +38,17 @@ async function boot() {
     });
   }
   // Plugins register panels before the dock is created, so the layout can reference them.
-  await activatePlugins();
+  await reconcilePlugins();
   root.render(
     <StrictMode>
       <App />
     </StrictMode>,
   );
   await workspace.refreshProblems().catch(reportError("Could not list problems"));
-  installServerEvents();
+  // Toggling a plugin: the server (de)activates its half first, then tells us to follow.
+  installServerEvents({
+    onPluginsChanged: () => void reconcilePlugins().then(refreshLanguageServers).catch(reportError("Could not update plugins")),
+  });
   // After the problems root is known (it becomes the servers' workspace folder); editors that are
   // already open are picked up.
   void installLanguageServers().catch(reportError("Could not load language servers"));

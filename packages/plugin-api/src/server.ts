@@ -36,6 +36,8 @@ export interface ServerEvents {
   "settings:changed": { changed: Partial<CoreSettings> & Record<string, unknown> };
   /** Files under the problems root changed (debounced). `ids` are affected problem folders. */
   "problems:changed": { ids: string[] };
+  /** Server plugins were turned on or off (after `plugins.disabled` changed and the host caught up). */
+  "plugins:changed": Record<string, never>;
 }
 
 export interface SettingsService {

@@ -49,7 +49,6 @@ function NumberControl({ value, d, onCommit }: { value: number; d: Extract<Setti
 
 function PluginsControl({ ctx, value, onCommit }: { ctx: WebPluginContext; value: string[]; onCommit: (v: string[]) => void }) {
   const plugins = ctx.plugins.list();
-  const [changed, setChanged] = useState(false);
   return (
     <div className="w-full space-y-1.5">
       {plugins.map((p) => (
@@ -65,21 +64,10 @@ function PluginsControl({ ctx, value, onCommit }: { ctx: WebPluginContext; value
           <Switch
             checked={!value.includes(p.id)}
             disabled={p.required}
-            onCheckedChange={(on) => {
-              setChanged(true);
-              onCommit(on ? value.filter((x) => x !== p.id) : [...value, p.id]);
-            }}
+            onCheckedChange={(on) => onCommit(on ? value.filter((x) => x !== p.id) : [...value, p.id])}
           />
         </div>
       ))}
-      {changed && (
-        <div className="flex items-center gap-2 text-[0.6875rem] text-muted-foreground">
-          Reload to apply plugin changes.
-          <Button size="sm" variant="outline" onClick={() => location.reload()}>
-            Reload
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

@@ -184,4 +184,6 @@ export type LibraryItem = { name: string; language: Language; content: string };
 
 export type ServerEvent =
   /** Files under the problems root changed (by the app or externally). `ids` are affected problem ids. */
-  { type: "problems-changed"; ids: string[] };
+  | { type: "problems-changed"; ids: string[] }
+  /** Plugins were turned on or off; the server has finished (de)activating its halves. */
+  | { type: "plugins-changed" };

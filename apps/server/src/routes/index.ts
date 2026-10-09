@@ -128,12 +128,16 @@ export const eventsRoute = (s: Services) =>
   new Hono().get("/", (c) =>
     streamSSE(c, async (stream) => {
       const send = (e: ServerEvent) => void stream.writeSSE({ data: JSON.stringify(e) });
-      const sub = s.events.on("problems:changed", ({ ids }) => send({ type: "problems-changed", ids }));
-      stream.onAbort(() => sub.dispose());
+      const subs = [
+        s.events.on("problems:changed", ({ ids }) => send({ type: "problems-changed", ids })),
+        s.events.on("plugins:changed", () => send({ type: "plugins-changed" })),
+      ];
+      const unsubscribe = () => subs.forEach((sub) => sub.dispose());
+      stream.onAbort(unsubscribe);
       while (!stream.aborted) {
         await stream.writeSSE({ event: "ping", data: "" });
         await stream.sleep(20_000);
       }
-      sub.dispose();
+      unsubscribe();
     }),
   );

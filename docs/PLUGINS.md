@@ -182,6 +182,11 @@ writeFile/writeTests/createFile/deleteFile/renameFile/move/trash/restore/dir/roo
 (see below), `dataDir`, `log`.
 `setup` may start its own listeners (e.g. the planned Competitive Companion receiver).
 
+Plugins can be turned on and off while the app runs (Settings → Plugins). Everything registered through
+`ctx` — routes, sockets, event listeners, language servers, launchers on the server; panels, commands,
+status items, New entries… on the web — is undone automatically when a plugin is turned off. Return a
+`Disposable` from `setup` / `activate` for anything else (timers, child processes, module state).
+
 See `plugins/toolchain` and `plugins/format` for complete small examples of both halves, and
 `plugins/playground` for WebSockets + live process sessions, and `plugins/python-warm` for a server-only
 feature attached through a core seam (`registerLauncher`).

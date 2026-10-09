@@ -113,43 +113,58 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
   return ctx;
 }
 
-export async function activatePlugins() {
-  const serverPlugins = await unwrap(api.plugins.$get()).catch(() => []);
-  const serverIds = new Set(serverPlugins.map((p) => p.id));
-  const disabled = new Set(getSetting("plugins.disabled"));
+/** Discovered web plugins, required (core) ones first so others can rely on their commands/panels. */
+const discovered: WebPlugin[] = Object.entries(modules)
+  .map(([path, mod]) => {
+    if (!mod.default?.id) console.error(`[plugins] ${path} has no default WebPlugin export`);
+    return mod.default;
+  })
+  .filter(Boolean)
+  .sort((a, b) => Number(!!b.required) - Number(!!a.required) || a.id.localeCompare(b.id));
 
-  const plugins = Object.entries(modules)
-    .map(([path, mod]) => {
-      if (!mod.default?.id) console.error(`[plugins] ${path} has no default WebPlugin export`);
-      return mod.default;
-    })
-    .filter(Boolean)
-    // Required (core) plugins first so others can rely on their commands/panels.
-    .sort((a, b) => Number(!!b.required) - Number(!!a.required) || a.id.localeCompare(b.id));
-
-  for (const plugin of plugins) {
-    const enabled = plugin.required || !disabled.has(plugin.id);
-    infos.push({
-      id: plugin.id,
-      name: plugin.name,
-      description: plugin.description,
-      required: plugin.required,
-      enabled,
-      hasServer: serverIds.has(plugin.id),
-    });
-    if (!enabled) continue;
-    const disposables = new DisposableStore();
-    stores.set(plugin.id, disposables);
-    try {
-      const result = await plugin.activate(createContext(plugin, disposables));
-      if (result) disposables.add(result);
-    } catch (err) {
-      console.error(`[plugins] ${plugin.id} failed to activate`, err);
-      notify.error(`Plugin "${plugin.name}" failed to activate`, err instanceof Error ? err.message : String(err));
-      disposables.dispose();
-    }
+async function activate(plugin: WebPlugin) {
+  const disposables = new DisposableStore();
+  stores.set(plugin.id, disposables);
+  try {
+    const result = await plugin.activate(createContext(plugin, disposables));
+    if (result) disposables.add(result);
+  } catch (err) {
+    console.error(`[plugins] ${plugin.id} failed to activate`, err);
+    notify.error(`Plugin "${plugin.name}" failed to activate`, err instanceof Error ? err.message : String(err));
+    disposables.dispose();
+    stores.delete(plugin.id);
   }
 }
+
+/** Disposing the store removes everything the plugin registered (panels close, commands go away…). */
+function deactivate(id: string) {
+  stores.get(id)?.dispose();
+  stores.delete(id);
+}
+
+let reconciling: Promise<void> = Promise.resolve();
+
+/**
+ * Bring the running plugins in line with `plugins.disabled`. Called at startup and whenever the server
+ * reports `plugins-changed` — by then its halves are (de)activated, so a web half never calls routes
+ * that are not mounted yet.
+ */
+export function reconcilePlugins(): Promise<void> {
+  reconciling = reconciling.then(async () => {
+    const serverPlugins = await unwrap(api.plugins.$get()).catch(() => []);
+    const serverIds = new Set(serverPlugins.map((p) => p.id));
+    const disabled = new Set(getSetting("plugins.disabled"));
+    infos.length = 0;
+    for (const plugin of discovered) {
+      const enabled = !!plugin.required || !disabled.has(plugin.id);
+      infos.push({ id: plugin.id, name: plugin.name, description: plugin.description, required: plugin.required, enabled, hasServer: serverIds.has(plugin.id) });
+      if (enabled && !stores.has(plugin.id)) await activate(plugin);
+      else if (!enabled && stores.has(plugin.id)) deactivate(plugin.id);
+    }
+  });
+  return reconciling;
+}
+
 
 export function pluginInfos() {
   return [...infos];

@@ -3,6 +3,29 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Plugins turn on and off live (server and web)
+
+- Report: turning off the language-server plugins left the servers running until a cold start;
+  turning the Playground back on failed with "Unexpected token '<'… not valid JSON".
+- Cause: both hosts read `plugins.disabled` only at startup. The Settings "Reload" re-ran web halves,
+  but server halves stayed as they were at server start — routes of a plugin enabled later were never
+  mounted, so requests fell through to the web app's HTML.
+- Server (`apps/server/src/plugin-host.ts`): discover once, then `reconcile()` on every
+  `plugins.disabled` change (serialised). Each plugin gets a scoped context — `websocket`, `on`,
+  `languageServers.register`, `runner.registerLauncher` are collected with `setup`'s result and
+  disposed on deactivate. Routes go through one dispatcher (`/api/plugins/:id/*`) that answers a JSON
+  404 while a plugin is off. Emits `plugins:changed` → SSE `plugins-changed`.
+- Web: `reconcilePlugins()` (startup + on `plugins-changed`, i.e. after the server caught up) activates /
+  disposes plugin stores; `refreshLanguageServers()` disposes sessions of removed servers and attaches
+  editors to new ones (`assign(model)` is the one place deciding a model's session); the layout closes
+  panels whose registration disappears; the registry stacks same-id registrations so disposing one
+  restores the previous (format plugin's `workspace.save` wrapper → core's save comes back).
+- Settings: plugin switches apply immediately (no "Reload" prompt).
+- Tests: `plugin-host.test.ts` (routes follow the plugin's state; language server unregistered).
+  Browser (temp home): basedpyright off → process gone, status item + markers + settings section gone;
+  Playground off → panel closed, 8 commands and New entry gone, API JSON 404; on → all back, files load,
+  no error toast; format off → `workspace.save` owned by core, on → format again.
+
 ## 2026-10-09 — Fix: basedpyright ignored the type-checking setting
 
 - Report: many type warnings even on "basic", and "off" changed nothing.

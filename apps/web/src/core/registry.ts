@@ -38,24 +38,43 @@ export const useRegistry = create<RegistryState>(() => ({
   settings: [],
 }));
 
-function add<K extends keyof RegistryState>(key: K, item: RegistryState[K][number], unique?: (x: RegistryState[K][number]) => boolean): Disposable {
+/** Registrations hidden by a later one with the same id, restored when that one is disposed. */
+const shadowed = new Map<string, unknown[]>();
+
+/**
+ * Add a contribution. With `id`, a later registration replaces an earlier one with the same id (e.g. the
+ * format plugin wrapping `workspace.save`); disposing it brings the earlier one back, so turning a
+ * plugin off never leaves a hole.
+ */
+function add<K extends keyof RegistryState>(key: K, item: RegistryState[K][number], id?: string): Disposable {
+  type Item = RegistryState[K][number];
+  const slot = id === undefined ? null : `${key}:${id}`;
+  const sameId = (x: Item) => slot !== null && (x as { id?: string }).id === id;
   useRegistry.setState((s) => {
-    const list = s[key] as RegistryState[K][number][];
-    const filtered = unique ? list.filter((x) => !unique(x)) : list;
-    return { [key]: [...filtered, item] } as Partial<RegistryState>;
+    const list = s[key] as Item[];
+    const previous = list.find(sameId);
+    if (previous !== undefined && slot) shadowed.set(slot, [...(shadowed.get(slot) ?? []), previous]);
+    return { [key]: [...list.filter((x) => !sameId(x)), item] } as Partial<RegistryState>;
   });
-  return toDisposable(() =>
-    useRegistry.setState((s) => ({ [key]: (s[key] as unknown[]).filter((x) => x !== item) }) as Partial<RegistryState>),
-  );
+  return toDisposable(() => {
+    const stack = slot ? (shadowed.get(slot) ?? []) : [];
+    const hiddenAt = stack.indexOf(item);
+    if (hiddenAt >= 0) return void stack.splice(hiddenAt, 1); // replaced already; just forget it
+    const restore = stack.pop() as Item | undefined;
+    useRegistry.setState((s) => {
+      const list = (s[key] as Item[]).filter((x) => x !== item);
+      return { [key]: restore === undefined ? list : [...list, restore] } as Partial<RegistryState>;
+    });
+  });
 }
 
 export const registry = {
-  addPanel: (p: Owned<PanelContribution>) => add("panels", p, (x) => x.id === p.id),
-  addCommand: (c: Owned<CommandContribution>) => add("commands", c, (x) => x.id === c.id),
-  addStatusBarItem: (i: Owned<StatusBarContribution>) => add("statusBar", i, (x) => x.id === i.id),
-  addToolbarItem: (i: Owned<UiItemContribution>) => add("toolbar", i, (x) => x.id === i.id),
-  addOverlay: (o: Owned<OverlayContribution>) => add("overlays", o, (x) => x.id === o.id),
-  addNewItem: (n: NewItemContribution) => add("newItems", n, (x) => x.id === n.id),
+  addPanel: (p: Owned<PanelContribution>) => add("panels", p, p.id),
+  addCommand: (c: Owned<CommandContribution>) => add("commands", c, c.id),
+  addStatusBarItem: (i: Owned<StatusBarContribution>) => add("statusBar", i, i.id),
+  addToolbarItem: (i: Owned<UiItemContribution>) => add("toolbar", i, i.id),
+  addOverlay: (o: Owned<OverlayContribution>) => add("overlays", o, o.id),
+  addNewItem: (n: NewItemContribution) => add("newItems", n, n.id),
   addSettings: (pluginId: string, descriptors: SettingDescriptors) => add("settings", { pluginId, descriptors }),
   panel: (id: string) => useRegistry.getState().panels.find((p) => p.id === id),
   command: (id: string) => useRegistry.getState().commands.find((c) => c.id === id),
