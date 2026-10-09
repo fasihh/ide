@@ -11,7 +11,7 @@ export type UiRequest =
       validate?: (v: string) => string | undefined;
       resolve: (v: string | undefined) => void;
     }
-  | { kind: "confirm"; title: string; message?: string; confirmLabel?: string; destructive?: boolean; resolve: (v: boolean) => void };
+  | { kind: "confirm"; title: string; message?: string; confirmLabel?: string; destructive?: boolean; rememberKey?: string; resolve: (v: boolean) => void };
 
 /** The one modal input shown by the shell (quick pick / prompt / confirm). */
 export const useUiRequest = create<{ request: UiRequest | null }>(() => ({ request: null }));
@@ -36,9 +36,28 @@ export function closeUi(result?: { value: unknown }) {
   else dismiss(r);
 }
 
+const skipKey = (key: string) => `cp-ide.confirm.skip.${key}`;
+
+export const confirmSkipped = (key: string) => {
+  try {
+    return localStorage.getItem(skipKey(key)) === "1";
+  } catch {
+    return false;
+  }
+};
+
+export function rememberConfirm(key: string) {
+  try {
+    localStorage.setItem(skipKey(key), "1");
+  } catch {}
+}
+
 export const uiApi: UiApi = {
   quickPick: (items, options) =>
     new Promise((resolve) => show({ kind: "pick", items, ...options, resolve: resolve as (v: unknown) => void })),
   prompt: (options) => new Promise((resolve) => show({ kind: "prompt", ...options, resolve })),
-  confirm: (options) => new Promise((resolve) => show({ kind: "confirm", ...options, resolve })),
+  confirm: (options) =>
+    options.rememberKey && confirmSkipped(options.rememberKey)
+      ? Promise.resolve(true)
+      : new Promise((resolve) => show({ kind: "confirm", ...options, resolve })),
 };

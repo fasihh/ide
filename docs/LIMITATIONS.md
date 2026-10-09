@@ -82,6 +82,7 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | If a file changes on disk while it has unsaved edits in the app, the app keeps your edits (no merge prompt) | Saving overwrites the external change |
 | Trash (`<root>/.trash`) is never emptied automatically; restore is only offered right after deleting (Undo) | Delete or restore folders there by hand |
 | Live sync relies on recursive `fs.watch` (Windows/macOS, Linux on recent Node); network drives may not report changes | Use the explorer's refresh button |
+| "Don't ask again" on confirmations is stored in the browser (`cp-ide.confirm.skip.*`) and has no settings UI to undo it | Clear that localStorage key |
 | No import from judge pages | Competitive Companion (last phase) |
 
 ## Development

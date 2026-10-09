@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, cn } from "@cp-ide/ui";
 import { fuzzyMatch } from "@cp-ide/shared";
-import { type UiRequest, closeUi, useUiRequest } from "../core/ui.ts";
+import { type UiRequest, closeUi, rememberConfirm, useUiRequest } from "../core/ui.ts";
 
 function Highlight({ text, indices }: { text: string; indices: number[] }) {
   if (!indices.length) return <>{text}</>;
@@ -94,9 +94,23 @@ function Pick({ request }: { request: Extract<UiRequest, { kind: "pick" }> }) {
   );
 }
 
+/** Focus on mount, and again after menus that opened the dialog hand focus back to their trigger. */
+function useAutoFocus<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    ref.current?.focus();
+    const t = setTimeout(() => {
+      if (!ref.current?.contains(document.activeElement)) ref.current?.focus();
+    }, 80);
+    return () => clearTimeout(t);
+  }, []);
+  return ref;
+}
+
 function Prompt({ request }: { request: Extract<UiRequest, { kind: "prompt" }> }) {
   const [value, setValue] = useState(request.value ?? "");
   const error = request.validate?.(value);
+  const input = useAutoFocus<HTMLInputElement>();
   return (
     <form
       className="space-y-2 p-3"
@@ -106,7 +120,7 @@ function Prompt({ request }: { request: Extract<UiRequest, { kind: "prompt" }> }
       }}
     >
       <div className="text-xs font-medium">{request.title}</div>
-      <Input autoFocus className="h-8 text-sm" placeholder={request.placeholder} value={value} onChange={(e) => setValue(e.target.value)} onFocus={(e) => e.target.select()} />
+      <Input ref={input} className="h-8 text-sm" placeholder={request.placeholder} value={value} onChange={(e) => setValue(e.target.value)} onFocus={(e) => e.target.select()} />
       <div className="flex h-4 items-center justify-between text-[0.6875rem]">
         <span className="text-destructive">{value && error}</span>
         <span className="text-muted-foreground">Enter to confirm · Esc to cancel</span>
@@ -116,15 +130,31 @@ function Prompt({ request }: { request: Extract<UiRequest, { kind: "prompt" }> }
 }
 
 function Confirm({ request }: { request: Extract<UiRequest, { kind: "confirm" }> }) {
+  const [remember, setRemember] = useState(false);
+  const confirmButton = useAutoFocus<HTMLButtonElement>();
+  const { rememberKey } = request;
   return (
     <div className="space-y-3 p-4">
       <div className="text-sm font-medium">{request.title}</div>
       {request.message && <div className="text-xs text-muted-foreground">{request.message}</div>}
+      {rememberKey && (
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground select-none">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          Don't ask again
+        </label>
+      )}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={() => closeUi()}>
           Cancel
         </Button>
-        <Button autoFocus variant={request.destructive ? "destructive" : "default"} onClick={() => closeUi({ value: true })}>
+        <Button
+          ref={confirmButton}
+          variant={request.destructive ? "destructive" : "default"}
+          onClick={() => {
+            if (rememberKey && remember) rememberConfirm(rememberKey);
+            closeUi({ value: true });
+          }}
+        >
           {request.confirmLabel ?? "OK"}
         </Button>
       </div>

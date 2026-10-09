@@ -359,7 +359,11 @@ export interface UiApi {
   quickPick<T>(items: QuickPickItem<T>[], options?: { placeholder?: string; title?: string }): Promise<T | undefined>;
   /** Single-line text prompt. `validate` returns an error message or undefined. */
   prompt(options: { title: string; placeholder?: string; value?: string; validate?: (v: string) => string | undefined }): Promise<string | undefined>;
-  confirm(options: { title: string; message?: string; confirmLabel?: string; destructive?: boolean }): Promise<boolean>;
+  /**
+   * Yes/no dialog. With `rememberKey` it shows a "Don't ask again" checkbox; once ticked and
+   * confirmed, later confirms with the same key resolve `true` without showing anything.
+   */
+  confirm(options: { title: string; message?: string; confirmLabel?: string; destructive?: boolean; rememberKey?: string }): Promise<boolean>;
 }
 
 export interface NotifyAction {
