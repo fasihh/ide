@@ -173,7 +173,8 @@ Prefer `unwrap` over `res.json()`: it drops a zod validator's 400 response from 
 Settings used by both halves can live in a shared module (see `plugins/format/src/settings.ts`):
 pass them to `settings` on the server and to `ctx.settings.contribute()` on the web side.
 
-Server `ctx`: `websocket(path, handler)` (served at `/api/plugins/<id>/<path>`, local origins only),
+Server `ctx`: `broadcast(payload)` (to this plugin's web half — `ctx.serverEvents.on(handler)` there; see
+`plugins/competitive-companion`), `websocket(path, handler)` (served at `/api/plugins/<id>/<path>`, local origins only),
 `settings` (get/getRaw/all), `problems` (list/get/create/createScratch/updateMeta/
 writeFile/writeTests/createFile/deleteFile/renameFile/move/trash/restore/dir/root), `library`
 (list/read/save), `runner` (compile/exec/interact/start — `start` gives a live process session;

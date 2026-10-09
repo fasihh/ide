@@ -434,6 +434,8 @@ export interface WebPluginContext {
   readonly overlays: { register(overlay: OverlayContribution): Disposable };
   /** Entries for the New menu and the empty editor (`useList` is a React hook, sorted by `order`). */
   readonly newItems: { register(item: NewItemContribution): Disposable; useList(): NewItemContribution[] };
+  /** Messages this plugin's server half sent with `ctx.broadcast` (live while the page is connected). */
+  readonly serverEvents: { on<T = unknown>(handler: (payload: T) => void): Disposable };
   readonly services: ServicesApi;
   readonly events: EventsApi;
   readonly layout: LayoutApi;

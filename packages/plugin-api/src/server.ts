@@ -38,6 +38,8 @@ export interface ServerEvents {
   "problems:changed": { ids: string[] };
   /** Server plugins were turned on or off (after `plugins.disabled` changed and the host caught up). */
   "plugins:changed": Record<string, never>;
+  /** A plugin's message for its web half (see `ServerPluginContext.broadcast`). */
+  "plugin:broadcast": { pluginId: string; payload: unknown };
 }
 
 export interface SettingsService {
@@ -178,6 +180,8 @@ export interface ServerPluginContext {
   on<K extends keyof ServerEvents>(event: K, handler: (payload: ServerEvents[K]) => void): Disposable;
   /** Accept WebSocket connections at `/api/plugins/<id>/<path>`. */
   websocket(path: string, handler: (socket: PluginSocket) => void): Disposable;
+  /** Send a JSON-serialisable message to this plugin's web half (`ctx.serverEvents.on` there). */
+  broadcast(payload: unknown): void;
   log(...args: unknown[]): void;
 }
 

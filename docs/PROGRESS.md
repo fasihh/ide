@@ -3,6 +3,31 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Phase 8: Competitive Companion import
+
+- `plugins/competitive-companion`:
+  - `payload.ts` — zod schema for the extension's JSON, `platformOf` (URL host → known names, else the
+    group's "Site - " prefix), `contestOf`, `toCreateInput`, `sameTest` (CRLF / trailing-space tolerant).
+  - `receiver.ts` — `CompanionReceiver`: HTTP on 127.0.0.1, POST JSON only, 5 MB cap, answers at once;
+    refuses web-page origins (extension origins or none allowed); status stopped / listening / error
+    (EADDRINUSE → readable message); reports the bound port.
+  - `importer.ts` — `importProblem` (create with samples, interactive → `updateMeta({interactive})`;
+    existing URL → add only new samples, keep code) and `BatchCollector` (one announcement per contest,
+    flush when complete or 3 s after the last problem).
+  - `server.ts` — imports serialised; listener restarts on `competitive-companion.port` change and is
+    disposed with the plugin; `GET /status`. State per activation in a `WeakMap` keyed by the context.
+  - `web.tsx` — status bar item (quiet when listening, red on error), notifications with Open, opens the
+    imported problem (problem A for a contest; `competitive-companion.openOnImport`).
+  - Default port 10043 (extension built-in; leaves CPH's 27121 free).
+- Core seam: server `ctx.broadcast(payload)` → `plugin:broadcast` → SSE `{ type: "plugin" }` → web
+  `ctx.serverEvents.on(handler)` (scoped to the plugin, disposed with it).
+- Tests: payload (4), receiver over real HTTP (origins, 405/400, port in use, dispose), importer + batches (3).
+- E2E (temp home, port 27199 to avoid the user's instance, requests shaped like the extension's):
+  single problem → created with limits/URL/sample, opened, "Imported A. Watermelon"; contest of 3 sent in
+  parallel → one "Imported 3 problems", interactive C got `interactor.cpp`; re-import → "Added 1 test"
+  (CRLF duplicate ignored, code kept); port change live; plugin off → port closed, status 404, item gone;
+  port taken → red item with message.
+
 ## 2026-10-09 — Fix: plugin switches vanished while toggling
 
 - Report: pressing a plugin switch in Settings made switches disappear.

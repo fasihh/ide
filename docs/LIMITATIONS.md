@@ -39,6 +39,14 @@ PROGRESS.md) when it is resolved. Planned fixes reference the phase in [PLAN.md]
 | The first member list for a big library (numpy, torch) after the server starts takes ~2–3 s | Repeats come from the completion cache (~150 ms; letters after the dot ~10 ms) |
 | A cached member list is shown once before its background refresh lands, so right after redefining a name (e.g. `np = something_else`) the old members can appear one time | The refresh replaces it for the next request |
 
+## Competitive Companion
+
+| Limitation | Notes / planned fix |
+|---|---|
+| Problems that read/write files instead of stdin/stdout (some USACO / Google Code Jam style tasks) are imported like stdin problems | Redirect in your code, or adjust the problem by hand |
+| Re-importing matches the existing problem by URL only | A problem created by hand (no URL) is not updated by an import |
+| The extension's `testType: "multiNumber"` and per-language options are ignored | Not needed for running tests |
+
 ## Plugins
 
 | Limitation | Notes / planned fix |

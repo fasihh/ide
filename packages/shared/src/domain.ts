@@ -186,4 +186,6 @@ export type ServerEvent =
   /** Files under the problems root changed (by the app or externally). `ids` are affected problem ids. */
   | { type: "problems-changed"; ids: string[] }
   /** Plugins were turned on or off; the server has finished (de)activating its halves. */
-  | { type: "plugins-changed" };
+  | { type: "plugins-changed" }
+  /** A server plugin's message for its web half. */
+  | { type: "plugin"; pluginId: string; payload: unknown };

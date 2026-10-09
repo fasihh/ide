@@ -131,6 +131,7 @@ export const eventsRoute = (s: Services) =>
       const subs = [
         s.events.on("problems:changed", ({ ids }) => send({ type: "problems-changed", ids })),
         s.events.on("plugins:changed", () => send({ type: "plugins-changed" })),
+        s.events.on("plugin:broadcast", ({ pluginId, payload }) => send({ type: "plugin", pluginId, payload })),
       ];
       const unsubscribe = () => subs.forEach((sub) => sub.dispose());
       stream.onAbort(unsubscribe);

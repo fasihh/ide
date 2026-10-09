@@ -17,6 +17,7 @@ import { libraryApi } from "./library.ts";
 import { runApi } from "./run.ts";
 import { notify } from "./notify.ts";
 import { events, registry, serviceRegistry, useNewItems } from "./registry.ts";
+import { pluginMessages } from "./server-events.ts";
 import { runnerApi } from "./runner.ts";
 import { getSetting, readSetting, updateSettings, useSetting, useSettings, useSettingsSchema } from "./settings.ts";
 import { themeApi } from "./theme.ts";
@@ -82,6 +83,10 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
     toolbar: { register: (item) => disposables.add(registry.addToolbarItem({ ...item, owner: ctx })) },
     overlays: { register: (overlay) => disposables.add(registry.addOverlay({ ...overlay, owner: ctx })) },
     newItems: { register: (item) => disposables.add(registry.addNewItem(item)), useList: useNewItems },
+    serverEvents: {
+      on: (handler) =>
+        disposables.add(pluginMessages.on("message", ({ pluginId, payload }) => pluginId === plugin.id && handler(payload as never))),
+    },
     services: {
       provide: (name, service) => disposables.add(serviceRegistry.provide(name, service)),
       get: <T extends object>(name: string) => serviceRegistry.get(name) as T | undefined,

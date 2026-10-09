@@ -1,0 +1,25 @@
+{
+  "name": "@cp-ide/plugin-competitive-companion",
+  "private": true,
+  "type": "module",
+  "description": "Import problems and sample tests from the Competitive Companion browser extension.",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@cp-ide/plugin-api": "workspace:*",
+    "@cp-ide/shared": "workspace:*",
+    "@cp-ide/ui": "workspace:*",
+    "hono": "^4.13.13",
+    "lucide-react": "^1.52.0",
+    "react": "^19.3.0",
+    "zod": "^4.6.5",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19",
+    "tsx": "^4.23.15"
+  }
+}

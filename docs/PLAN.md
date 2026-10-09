@@ -154,10 +154,14 @@ VS Code-level completions, hover, signature help, diagnostics as you type and na
 - ⏸ Stress tester (generator + brute + solution loop, save failing case as a test)
 - ⏸ Custom checkers (testlib-style `checker.cpp` for multi-answer problems)
 
-## Phase 8 — Competitive Companion import ⬜ (last, by request)
+## Phase 8 — Competitive Companion import ✅
 
-Implement as a plugin (`plugins/companion`) — server half starts its own HTTP listener.
-- ⬜ Listen on a configurable port (default **10043**; 27121 is CPH's and clashes when VS Code runs)
-- ⬜ Parse payload (`name`, `group`, `url`, `tests`, `timeLimit`, `memoryLimit`, `interactive`, `batch`)
-- ⬜ Map `group` ("Codeforces - Educational Round 170") → platform + contest
-- ⬜ Create the problem, notify the web app (SSE event) and auto-open it; batch = whole contest
+`plugins/competitive-companion` — the server half runs its own HTTP listener.
+- ✅ Configurable port (default **10043**, one of the extension's built-in ports; 27121 stays free for CPH),
+  restarts live on change, closes when the plugin is turned off, reports "port in use"
+- ✅ Payload parsed with zod (`name`, `group`, `url`, `tests`, `timeLimit`, `memoryLimit`, `interactive`, `batch`)
+- ✅ Platform from the URL host (else the group's site); contest from `group` minus "Site - "
+- ✅ Creates the problem (interactive → interactor created); same URL again → adds only new samples,
+  keeps the code; whole contest (batch) → one notification, opens problem A
+- ✅ Core seam: `ctx.broadcast` (server) → SSE → `ctx.serverEvents.on` (that plugin's web half)
+- ✅ Only extension origins (or none) accepted, so web pages cannot POST problems

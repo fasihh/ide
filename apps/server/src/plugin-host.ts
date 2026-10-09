@@ -143,6 +143,7 @@ export class ServerPluginHost implements Disposable {
       languageServers: { register: (server) => disposables.add(languageServers.register(server)) },
       on: (event, handler) => disposables.add(events.on(event, handler)),
       websocket: (path, handler) => disposables.add(this.sockets.add(`/api/plugins/${pluginId}/${path.replace(/^\/+/, "")}`, handler)),
+      broadcast: (payload) => events.emit("plugin:broadcast", { pluginId, payload }),
       log: (...args) => console.log(`[${pluginId}]`, ...args),
     };
   }

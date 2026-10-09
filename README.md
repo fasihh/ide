@@ -31,6 +31,14 @@ Data locations:
   **Templates & Snippets** panel, from the command palette)
 - Deleted problems go to `<problems root>/.trash`
 
+## Import problems with Competitive Companion
+
+Install the [Competitive Companion](https://github.com/jmerle/competitive-companion) browser extension,
+keep cp-ide running, and click the extension's green **+** on a problem or contest page. The problem
+(with its sample tests, limits and URL) is created under the problems root and opened; a whole contest
+arrives at once. It listens on port **10043**, one of the extension's built-in ports, so CPH in VS Code
+(27121) can run alongside. The status bar shows **Companion** while it listens.
+
 ## Shortcuts
 
 All of these can be changed in **Keyboard Shortcuts** (Ctrl+Alt+K).

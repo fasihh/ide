@@ -226,6 +226,43 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0
 
+  plugins/competitive-companion:
+    dependencies:
+      '@cp-ide/plugin-api':
+        specifier: workspace:*
+        version: link:../../packages/plugin-api
+      '@cp-ide/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@cp-ide/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      hono:
+        specifier: ^4.13.13
+        version: 4.13.13
+      lucide-react:
+        specifier: ^1.52.0
+        version: 1.52.0(@types/react@19.3.0)(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+      zustand:
+        specifier: ^5.0.15
+        version: 5.0.15(@types/react@19.3.0)(react@19.3.0)
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
   plugins/core:
     dependencies:
       '@cp-ide/editor':

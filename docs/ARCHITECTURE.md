@@ -43,6 +43,7 @@
 | `plugins/python-warm` | Warm start for live Python runs: a `ProcessLauncher` with a standby interpreter (`warm_bootstrap.py`) |
 | `plugins/lsp-clangd` | Registers clangd (C++) with core: command from PATH/setting, fallback flags from the C++ settings |
 | `plugins/lsp-basedpyright` | Registers basedpyright (Python, bundled npm dependency) with core |
+| `plugins/competitive-companion` | Local HTTP receiver for the Competitive Companion extension: creates/updates problems with samples, announces imports via `ctx.broadcast` |
 | `plugins/playground` | Playground editor + xterm terminal, live runs over a WebSocket, files in `playground.folder` |
 
 Internal packages export TypeScript source directly (no build step); Vite and tsx compile them.

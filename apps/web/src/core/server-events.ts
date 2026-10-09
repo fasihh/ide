@@ -1,5 +1,9 @@
 import type { ServerEvent } from "@cp-ide/shared";
+import { Emitter } from "@cp-ide/plugin-api/web";
 import { events } from "./registry.ts";
+
+/** Messages from server plugins to their web halves (`ctx.serverEvents`). */
+export const pluginMessages = new Emitter<{ message: { pluginId: string; payload: unknown } }>();
 import { reconcileFromDisk, refreshProblemsQuietly, useWorkspace } from "./workspace.ts";
 
 /** The server pings every 20s; without one for this long the connection is considered dead. */
@@ -49,6 +53,7 @@ export function installServerEvents({ onPluginsChanged }: { onPluginsChanged: ()
       }
       if (event.type === "problems-changed") handleChange(event.ids);
       else if (event.type === "plugins-changed") onPluginsChanged();
+      else if (event.type === "plugin") pluginMessages.emit("message", { pluginId: event.pluginId, payload: event.payload });
     };
   };
 
