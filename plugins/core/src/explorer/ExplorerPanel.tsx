@@ -35,6 +35,8 @@ function openProblem(ctx: WebPluginContext, id: string) {
   void ctx.workspace.openProblem(id).then(() => ctx.panels.open("core.editor"));
 }
 
+let dragStartTimer: ReturnType<typeof setTimeout> | undefined;
+
 type Target = { platform: string; group: string };
 
 /** What the explorer tracks while a problem row is being dragged. */
@@ -172,9 +174,11 @@ function ProblemRow({
           onDragStart={(e) => {
             e.dataTransfer.setData(DRAG_TYPE, p.id);
             e.dataTransfer.effectAllowed = "move";
-            drag.setId(p.id);
+            // Chrome cancels a drag whose dragstart handler changes the layout (the ghost folder shifts rows), so wait a tick.
+            dragStartTimer = setTimeout(() => drag.setId(p.id), 0);
           }}
           onDragEnd={() => {
+            clearTimeout(dragStartTimer); // a drag that ended within the tick must not leave the ghost folder showing
             drag.setId(null);
             drag.setOver(null);
           }}
