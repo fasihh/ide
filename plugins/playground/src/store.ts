@@ -23,7 +23,24 @@ export const usePlayground = create<{
 const set = usePlayground.setState;
 const get = usePlayground.getState;
 const ACTIVE_KEY = "cp-ide.playground.active";
+const ORDER_KEY = "cp-ide.playground.order";
 const SAVE_DELAY = 600;
+
+/** The user's tab order; files not in it (new, or created outside the app) go last in the server's order. */
+const readOrder = (): string[] => {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(ORDER_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeOrder = (names: string[]) => {
+  try {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(names));
+  } catch {}
+};
 
 type Api = RpcClient<PluginRoutes<typeof serverPlugin>>;
 let api: Api;
@@ -41,6 +58,12 @@ function applyList(res: { folder: string; files: { name: string; language: "cpp"
     // Keep unsaved edits when refreshing.
     return old && old.content !== old.saved ? { ...f, content: old.content, saved: f.content } : { ...f, saved: f.content };
   });
+  const order = readOrder();
+  const rank = (name: string) => {
+    const i = order.indexOf(name);
+    return i < 0 ? order.length : i;
+  };
+  files.sort((a, b) => rank(a.name) - rank(b.name)); // stable: unknown names keep the server's order
   const remembered = (() => {
     try {
       return localStorage.getItem(ACTIVE_KEY);
@@ -62,6 +85,16 @@ export function setActive(name: string) {
   try {
     localStorage.setItem(ACTIVE_KEY, name);
   } catch {}
+}
+
+/** Put `name` just before `before` (or last when `before` is null) and remember the order. */
+export function moveFile(name: string, before: string | null) {
+  const names = get().files.map((f) => f.name).filter((n) => n !== name);
+  const at = before === null ? names.length : names.indexOf(before);
+  if (at < 0) return;
+  names.splice(at, 0, name);
+  writeOrder(names);
+  set((s) => ({ files: names.map((n) => s.files.find((f) => f.name === n)!) })); // names come from s.files, so every lookup hits
 }
 
 export const activeFile = () => get().files.find((f) => f.name === get().active);
@@ -94,7 +127,14 @@ export async function createFile(name: string, content?: string) {
 
 export async function renameFile(from: string, to: string) {
   await saveFile(from);
-  applyList(await unwrap(api.rename.$post({ json: { from, to } })));
+  const before = get().files.map((f) => f.name);
+  writeOrder(before.map((n) => (n === from ? to : n))); // applyList sorts by it, so the renamed tab keeps its place
+  try {
+    applyList(await unwrap(api.rename.$post({ json: { from, to } })));
+  } catch (e) {
+    writeOrder(before);
+    throw e;
+  }
   if (get().active === from) setActive(to);
 }
 
