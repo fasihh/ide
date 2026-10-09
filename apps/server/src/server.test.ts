@@ -59,7 +59,9 @@ describe("runner", () => {
 
   test("TLE and RE", async () => {
     const loop = await compile("cpp", "int main(){ volatile int x = 0; while(true) x++; }");
-    assert.equal((await runner.exec({ artifactId: loop, input: "", timeLimitMs: 300 })).verdict, "TLE");
+    const tle = await runner.exec({ artifactId: loop, input: "", timeLimitMs: 300 });
+    assert.equal(tle.verdict, "TLE");
+    assert.match(tle.message ?? "", /^Never finished: stopped after \d+ ms \(\d+(\.\d+)?× the 300 ms time limit\)/, "says where the cut-off came from");
     const crash = await compile("cpp", "#include <cstdlib>\nint main(){ return 3; }");
     const re = await runner.exec({ artifactId: crash, input: "" });
     assert.equal(re.verdict, "RE");

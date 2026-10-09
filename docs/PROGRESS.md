@@ -3,6 +3,13 @@
 Newest first. Update this when you finish a chunk of work: what changed, what was verified, what is
 left. Phase checklists live in [PLAN.md](PLAN.md).
 
+## 2026-10-09 — Clearer message when a run is stopped
+
+- Report: "Killed after 10022 ms" looked like a 10 s cap. It was the problem's own limit × "Kill after"
+  (10), and the solution really never finished (infinite recursion at n = 1).
+- TLE by kill now reads "Never finished: stopped after N ms (F× the L ms time limit). Look for an infinite
+  loop or recursion; if it is just slow, raise this problem's time limit." (tests and interactive runs).
+
 ## 2026-10-09 — Per-file indentation; longer time limits; visible setting clamps
 
 - Report: some files ignore the tab-size setting; a TLE after 10 s could not be raised in Settings.

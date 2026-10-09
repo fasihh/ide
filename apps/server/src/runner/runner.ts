@@ -249,7 +249,7 @@ export class RunnerService implements RunnerApi {
       if (res.solution.spawnError) return { ...base, verdict: "RE", message: `Could not start program: ${res.solution.spawnError}` };
       if (res.interactor.spawnError) return { ...base, verdict: "RE", message: `Could not start interactor: ${res.interactor.spawnError}` };
       if (res.outputExceeded) return { ...base, verdict: "OLE", message: "Output limit exceeded" };
-      if (res.timedOut) return { ...base, verdict: "TLE", message: `Killed after ${res.timeMs} ms (both sides stopped)` };
+      if (res.timedOut) return { ...base, verdict: "TLE", message: `${neverFinished(res.timeMs, tl, this.settings.get("runner.killAfterFactor"))} Both sides were stopped.` };
       const ic = res.interactor.exitCode;
       if (ic === 3) return { ...base, verdict: "RE", message: `Interactor failed (judge error)${judgeSays ? `: ${judgeSays}` : ""}` };
       if (ic === 1 || ic === 2) {
@@ -286,7 +286,7 @@ export class RunnerService implements RunnerApi {
     };
 
     if (res.spawnError) return { ...base, verdict: "RE", message: `Could not start program: ${res.spawnError}` };
-    if (res.timedOut) return { ...base, verdict: "TLE", message: `Killed after ${res.timeMs} ms` };
+    if (res.timedOut) return { ...base, verdict: "TLE", message: neverFinished(res.timeMs, tl, this.settings.get("runner.killAfterFactor")) };
     if (res.outputExceeded) return { ...base, verdict: "OLE", message: "Output limit exceeded" };
     if (res.exitCode !== 0 || res.signal) return { ...base, verdict: "RE", message: describeExit(res.exitCode, res.signal) };
     if (res.timeMs > tl) return { ...base, verdict: "TLE", message: `Took ${res.timeMs} ms (limit ${tl} ms)` };
@@ -312,6 +312,14 @@ export class RunnerService implements RunnerApi {
     this.running--;
     this.waiters.shift()?.();
   }
+}
+
+/**
+ * A run stopped by the runner, not by the program: say where the cut-off came from (the problem's or the
+ * default time limit × "Kill after"), since raising the default does not help a problem with its own limit.
+ */
+function neverFinished(timeMs: number, limitMs: number, factor: number) {
+  return `Never finished: stopped after ${timeMs} ms (${factor}× the ${limitMs} ms time limit)`;
 }
 
 function truncate(s: string) {
