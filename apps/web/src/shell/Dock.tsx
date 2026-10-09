@@ -39,7 +39,7 @@ function PluginPanel({ params }: IDockviewPanelProps<{ panelId: string }>) {
   const C = panel.component;
   return (
     <PanelErrorBoundary name={panel.title}>
-      <div className="h-full overflow-hidden">
+      <div data-panel-id={panel.id} className="h-full overflow-hidden">
         <C ctx={panel.owner} />
       </div>
     </PanelErrorBoundary>

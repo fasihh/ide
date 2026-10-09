@@ -54,3 +54,28 @@
 .dockview-theme-cp .dv-groupview.dv-active-group > .dv-tabs-and-actions-container .dv-tab.dv-active-tab {
   box-shadow: inset 0 -2px 0 var(--primary);
 }
+
+/* Dockview focuses its containers (tabindex=-1) on click and Ctrl/Alt shortcuts; the browser's
+   default white outline looks out of place, so show focus as a faint tint of the group border. */
+.dockview-theme-cp .dv-groupview:focus,
+.dockview-theme-cp .dv-groupview:focus-visible,
+.dockview-theme-cp .dv-content-container:focus,
+.dockview-theme-cp .dv-content-container:focus-visible,
+.dockview-theme-cp .dv-tab:focus,
+.dockview-theme-cp .dv-tab:focus-visible,
+.dockview-theme-cp .dv-tabs-container:focus-visible,
+/* Panel content sits in a bare div[tabindex=-1] of dockview's overlay layer, which also takes focus on click. */
+.dockview-theme-cp [tabindex="-1"]:focus,
+.dockview-theme-cp [tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
+.dockview-theme-cp .dv-groupview:focus-within {
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+}
+
+/* No focus ring on layout containers anywhere; controls (buttons, inputs, editors) keep theirs. */
+:where(div, section, main, header, ul, li, span):focus,
+:where(div, section, main, header, ul, li, span):focus-visible {
+  outline: none;
+}

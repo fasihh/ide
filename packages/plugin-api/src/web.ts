@@ -315,6 +315,8 @@ export interface PanelsApi {
   open(id: string): void;
   close(id: string): void;
   toggle(id: string): void;
+  /** Open (or bring forward) a panel and move keyboard focus into it. */
+  focus(id: string): void;
   /** Whether a panel is currently open in the layout. */
   isOpen(id: string): boolean;
   /** The active (focused) panel's id. */

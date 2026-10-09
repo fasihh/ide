@@ -53,6 +53,7 @@ export default definePlugin({
         keybinding,
         run: () => ctx.panels.toggle(panel.id),
       });
+      ctx.commands.register({ id: `view.focus.${panel.id}`, title: `Focus ${panel.title}`, category: "View", run: () => ctx.panels.focus(panel.id) });
     }
 
     // ---- layouts ----

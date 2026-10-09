@@ -163,6 +163,16 @@ function flushPendingSizes() {
 
 const defaultPanels = () => useRegistry.getState().panels.filter((p) => p.defaultOpen).map((p) => p.id);
 
+const FOCUSABLE = "textarea, input, [contenteditable='true'], button, [tabindex]:not([tabindex='-1'])";
+
+/** Focus the first control inside a panel, or the panel itself when it has none. */
+function focusInside(root: HTMLElement) {
+  const target = root.querySelector<HTMLElement>(FOCUSABLE);
+  if (target) return target.focus();
+  root.tabIndex = -1;
+  root.focus();
+}
+
 export const layout = {
   init(api: DockviewApi) {
     dock = api;
@@ -215,6 +225,17 @@ export const layout = {
     }
     const c = registry.panel(id);
     if (c) addPanel(c);
+  },
+
+  /** Open (or bring forward) a panel and move keyboard focus into it. */
+  focus(id: string) {
+    layout.open(id);
+    // A just-opened panel mounts its content after this call returns.
+    setTimeout(() => {
+      // Content is rendered in dockview's overlay layer (renderer "always"), so look it up by the id the Dock stamps on it.
+      const root = document.querySelector<HTMLElement>(`[data-panel-id="${CSS.escape(id)}"]`);
+      if (root) focusInside(root);
+    }, 0);
   },
 
   close(id: string) {

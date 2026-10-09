@@ -73,6 +73,7 @@ function createContext(plugin: WebPlugin, disposables: DisposableStore): WebPlug
       open: layout.open,
       close: layout.close,
       toggle: layout.toggle,
+      focus: layout.focus,
       isOpen: (id) => useLayout.getState().open.includes(id),
       active: () => useLayout.getState().active,
       useActive: () => useLayout((s) => s.active),
