@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Copy,
-  FilePlus2,
-  FolderInput,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Copy, FilePlus2, FolderInput, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { PanelProps, WebPluginContext } from "@cp-ide/plugin-api/web";
 import type { ProblemSummary } from "@cp-ide/shared";
 import {
@@ -30,13 +20,41 @@ import { ExplorerToolbar } from "./ExplorerToolbar.tsx";
 import { DEFAULT_VIEW, STATUS_DOT, STATUS_LABEL, STATUS_RANK, type Sort, type ViewState } from "./view.ts";
 
 const RECENT_COUNT = 5;
+const DRAG_TYPE = "application/x-cp-ide-problem";
+
+/** Scratch problems are grouped by local date; the same format the server uses for new ones. */
+const SCRATCH_PLATFORM = "scratch";
+const todayGroup = () => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+/** Opening from the explorer also brings the Code tab forward (the user may be on Playground, Settings, …). */
+function openProblem(ctx: WebPluginContext, id: string) {
+  void ctx.workspace.openProblem(id).then(() => ctx.panels.open("core.editor"));
+}
+
+type Target = { platform: string; group: string };
+
+/** What the explorer tracks while a problem row is being dragged. */
+interface DragState {
+  /** The dragged problem's id; null when nothing is being dragged. */
+  id: string | null;
+  setId(id: string | null): void;
+  setOver(key: string | null): void;
+  drop(target: Target): void;
+}
 
 const VIEW_KEY = "cp-ide.explorer.v1";
 
 function useViewState() {
   const [view, setView] = useState<ViewState>(() => {
     try {
-      return { ...DEFAULT_VIEW, ...JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}") };
+      return {
+        ...DEFAULT_VIEW,
+        ...JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}"),
+      };
     } catch {
       return DEFAULT_VIEW;
     }
@@ -76,16 +94,14 @@ function buildTree(problems: ProblemSummary[], sort: Sort): Tree {
       sorted.sort(([ga, la], [gb, lb]) => (sort === "recent" ? latest(lb).localeCompare(latest(la)) : byName(ga, gb)));
       return [platform, sorted] as [string, [string, ProblemSummary[]][]];
     })
-    .sort(([a, ga], [b, gb]) =>
-      sort === "recent" ? latest(gb.flatMap(([, l]) => l)).localeCompare(latest(ga.flatMap(([, l]) => l))) : byName(a, b),
-    );
+    .sort(([a, ga], [b, gb]) => (sort === "recent" ? latest(gb.flatMap(([, l]) => l)).localeCompare(latest(ga.flatMap(([, l]) => l))) : byName(a, b)));
 }
 
 function ProblemMenu({ ctx, p }: { ctx: WebPluginContext; p: ProblemSummary }) {
   return (
     <ContextMenuContent>
       <ContextMenuLabel className="max-w-56 truncate">{p.name}</ContextMenuLabel>
-      <ContextMenuItem onSelect={() => ctx.workspace.openProblem(p.id)}>Open</ContextMenuItem>
+      <ContextMenuItem onSelect={() => openProblem(ctx, p.id)}>Open</ContextMenuItem>
       <ContextMenuItem onSelect={() => renameProblem(ctx, p.id)}>
         <Pencil /> Rename…
       </ContextMenuItem>
@@ -121,17 +137,47 @@ function openMenu(e: React.MouseEvent) {
   e.stopPropagation();
   const row = (e.currentTarget as HTMLElement).closest("[data-row]");
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-  row?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: r.left, clientY: r.bottom }));
+  row?.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      clientX: r.left,
+      clientY: r.bottom,
+    }),
+  );
 }
 
-function ProblemRow({ ctx, p, active, indent, showGroup }: { ctx: WebPluginContext; p: ProblemSummary; active: boolean; indent: number; showGroup?: boolean }) {
+function ProblemRow({
+  ctx,
+  p,
+  active,
+  indent,
+  showGroup,
+  drag,
+}: {
+  ctx: WebPluginContext;
+  p: ProblemSummary;
+  active: boolean;
+  indent: number;
+  showGroup?: boolean;
+  drag: DragState;
+}) {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
           data-row
           title={`${p.id}${p.tags.length ? `\n${p.tags.join(", ")}` : ""}`}
-          onClick={() => ctx.workspace.openProblem(p.id)}
+          onClick={() => openProblem(ctx, p.id)}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData(DRAG_TYPE, p.id);
+            e.dataTransfer.effectAllowed = "move";
+            drag.setId(p.id);
+          }}
+          onDragEnd={() => {
+            drag.setId(null);
+            drag.setOver(null);
+          }}
           style={{ paddingLeft: indent }}
           className={cn(
             "group flex h-6 cursor-pointer items-center gap-2 rounded-sm pr-1 text-xs select-none hover:bg-accent",
@@ -157,7 +203,11 @@ function ProblemRow({ ctx, p, active, indent, showGroup }: { ctx: WebPluginConte
 }
 
 async function renameGroup(ctx: WebPluginContext, platform: string, group: string, list: ProblemSummary[]) {
-  const name = await ctx.ui.prompt({ title: `Rename contest "${group}"`, value: group, validate: (v) => (!v.trim() ? "Enter a name" : undefined) });
+  const name = await ctx.ui.prompt({
+    title: `Rename contest "${group}"`,
+    value: group,
+    validate: (v) => (!v.trim() ? "Enter a name" : undefined),
+  });
   if (!name?.trim() || name.trim() === group) return;
   for (const p of list) {
     await ctx.workspace.moveProblem(p.id, { platform, group: name.trim() }).catch((e) => ctx.notify.error(`Could not move ${p.name}`, String(e?.message ?? e)));
@@ -172,6 +222,8 @@ function GroupRow({
   solved,
   onClick,
   menu,
+  drop,
+  ghost,
 }: {
   depth: number;
   open: boolean;
@@ -180,13 +232,37 @@ function GroupRow({
   solved?: number;
   onClick: () => void;
   menu?: React.ReactNode;
+  /** Makes the row a drop target for dragged problems. */
+  drop?: { over: boolean; setOver(over: boolean): void; onDrop(): void };
+  /** A folder that does not exist yet; it is created when a problem is dropped on it. */
+  ghost?: boolean;
 }) {
   const row = (
     <div
       data-row
-      className="flex h-6 w-full cursor-pointer items-center gap-1 rounded-sm pr-2 text-left text-xs select-none hover:bg-accent"
+      className={cn(
+        "flex h-6 w-full cursor-pointer items-center gap-1 rounded-sm pr-2 text-left text-xs select-none hover:bg-accent",
+        ghost && "border border-dashed border-muted-foreground/40 text-muted-foreground italic",
+        drop?.over && "bg-primary/15 ring-1 ring-primary/60",
+      )}
       style={{ paddingLeft: 4 + depth * 12 }}
       onClick={onClick}
+      onDragOver={
+        drop &&
+        ((e) => {
+          if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+          e.preventDefault();
+          drop.setOver(true);
+        })
+      }
+      onDragLeave={drop && (() => drop.setOver(false))}
+      onDrop={
+        drop &&
+        ((e) => {
+          e.preventDefault();
+          drop.onDrop();
+        })
+      }
     >
       {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
       <span className="truncate font-medium">{label}</span>
@@ -208,6 +284,34 @@ export function ExplorerPanel({ ctx }: PanelProps) {
   const active = ctx.workspace.use((s) => s.problem?.id);
   const [query, setQuery] = useState("");
   const [view, setView] = useViewState();
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+
+  const drag: DragState = {
+    id: dragId,
+    setId: setDragId,
+    setOver,
+    drop(target) {
+      const id = dragId;
+      setDragId(null);
+      setOver(null);
+      const p = problems.find((x) => x.id === id);
+      if (!p || (p.platform === target.platform && p.group === target.group)) return;
+      void ctx.workspace.moveProblem(p.id, target).catch((e) => ctx.notify.error(`Could not move ${p.name}`, String(e?.message ?? e)));
+    },
+  };
+  const dropOn = (platform: string, group: string) => {
+    const key = `${platform}/${group}`;
+    return {
+      over: over === key,
+      setOver: (on: boolean) => setOver((cur) => (on ? key : cur === key ? null : cur)),
+      onDrop: () => drag.drop({ platform, group }),
+    };
+  };
+  // Dragging into "scratch" usually means "today", which has no folder until a scratch problem is made.
+  const today = todayGroup();
+  const showGhost = dragId !== null && !problems.some((p) => p.platform === SCRATCH_PLATFORM && p.group === today);
+  const ghostRow = <GroupRow depth={1} open={false} label={`${today} (today)`} count={0} onClick={() => {}} drop={dropOn(SCRATCH_PLATFORM, today)} ghost />;
 
   const allTags = useMemo(() => [...new Set(problems.flatMap((p) => p.tags))].sort(byName), [problems]);
   const counts = useMemo(() => {
@@ -231,7 +335,9 @@ export function ExplorerPanel({ ctx }: PanelProps) {
   const recent = useMemo(() => (filtering ? [] : [...problems].sort(compare("recent")).slice(0, RECENT_COUNT)), [problems, filtering]);
   const collapsed = new Set(view.collapsed);
   const toggle = (key: string) =>
-    setView({ collapsed: collapsed.has(key) ? view.collapsed.filter((k) => k !== key) : [...view.collapsed, key] });
+    setView({
+      collapsed: collapsed.has(key) ? view.collapsed.filter((k) => k !== key) : [...view.collapsed, key],
+    });
 
   return (
     <div className="flex h-full flex-col">
@@ -252,13 +358,13 @@ export function ExplorerPanel({ ctx }: PanelProps) {
               onClick={() => setView({ recentOpen: !view.recentOpen })}
             />
             {view.recentOpen &&
-              recent.map((p) => <ProblemRow key={`recent:${p.id}`} ctx={ctx} p={p} active={p.id === active} indent={22} showGroup />)}
+              recent.map((p) => <ProblemRow key={`recent:${p.id}`} ctx={ctx} p={p} active={p.id === active} indent={22} showGroup drag={drag} />)}
           </div>
         )}
 
         {tree.map(([platform, groups]) => {
           const all = groups.flatMap(([, l]) => l);
-          const platformOpen = !collapsed.has(platform) || filtering;
+          const platformOpen = !collapsed.has(platform) || filtering || (platform === SCRATCH_PLATFORM && showGhost);
           return (
             <div key={platform}>
               <GroupRow
@@ -269,8 +375,9 @@ export function ExplorerPanel({ ctx }: PanelProps) {
                 solved={all.filter((p) => p.status === "solved").length}
                 onClick={() => toggle(platform)}
               />
-              {platformOpen &&
-                groups.map(([group, list]) => {
+              {platformOpen && [
+                platform === SCRATCH_PLATFORM && showGhost && <div key="ghost">{ghostRow}</div>,
+                ...groups.map(([group, list]) => {
                   const key = `${platform}/${group}`;
                   const groupOpen = !collapsed.has(key) || filtering;
                   return (
@@ -282,6 +389,7 @@ export function ExplorerPanel({ ctx }: PanelProps) {
                         count={list.length}
                         solved={list.filter((p) => p.status === "solved").length}
                         onClick={() => toggle(key)}
+                        drop={dropOn(platform, group)}
                         menu={
                           <ContextMenuContent>
                             <ContextMenuLabel>{group}</ContextMenuLabel>
@@ -294,13 +402,21 @@ export function ExplorerPanel({ ctx }: PanelProps) {
                           </ContextMenuContent>
                         }
                       />
-                      {groupOpen && list.map((p) => <ProblemRow key={p.id} ctx={ctx} p={p} active={p.id === active} indent={34} />)}
+                      {groupOpen && list.map((p) => <ProblemRow key={p.id} ctx={ctx} p={p} active={p.id === active} indent={34} drag={drag} />)}
                     </div>
                   );
-                })}
+                }),
+              ]}
             </div>
           );
         })}
+
+        {showGhost && !tree.some(([platform]) => platform === SCRATCH_PLATFORM) && (
+          <div>
+            <GroupRow depth={0} open label={SCRATCH_PLATFORM} count={0} onClick={() => {}} />
+            {ghostRow}
+          </div>
+        )}
 
         {problems.length === 0 && !loading && (
           <div className="space-y-1 px-2 py-6 text-center text-xs text-muted-foreground">
